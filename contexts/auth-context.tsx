@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createClient } from "@/lib/supabase/client"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 export type UserRole = "collector_buyer" | "collector_seller" | "curator"
 
@@ -16,6 +18,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null
+  supabaseUser: SupabaseUser | null
   isLoading: boolean
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
@@ -31,87 +34,114 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Mock user database
-const mockUsers: { email: string; password: string; user: Omit<User, "activeRole"> }[] = [
-  {
-    email: "buyer@example.com",
-    password: "password123",
-    user: {
-      id: "1",
-      name: "Alex Chen",
-      email: "buyer@example.com",
-      avatar: "/male-artist-portrait.png",
-      roles: ["collector_buyer"],
-      createdAt: new Date("2024-01-15"),
-    },
-  },
-  {
-    email: "seller@example.com",
-    password: "password123",
-    user: {
-      id: "2",
-      name: "Maria Rodriguez",
-      email: "seller@example.com",
-      avatar: "/female-artist-portrait.png",
-      roles: ["collector_buyer", "collector_seller"],
-      createdAt: new Date("2024-02-20"),
-    },
-  },
-  {
-    email: "curator@example.com",
-    password: "password123",
-    user: {
-      id: "3",
-      name: "Dr. Sarah Mitchell",
-      email: "curator@example.com",
-      avatar: "/female-art-curator-portrait-professional.jpg",
-      roles: ["curator", "collector_buyer"],
-      createdAt: new Date("2023-11-10"),
-    },
-  },
-]
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [needsRoleSelection, setNeedsRoleSelection] = useState(false)
 
-  useEffect(() => {
-    // Check for stored session
-    const storedUser = localStorage.getItem("offa_user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+  const supabase = createClient()
+
+  // Fetch profile data from Supabase
+  const fetchProfile = async (supabaseUser: SupabaseUser): Promise<User | null> => {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", supabaseUser.id)
+      .single()
+
+    if (error || !profile) {
+      // If no profile exists, create a basic user from Supabase auth data
+      return {
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0] || "User",
+        email: supabaseUser.email || "",
+        avatar: supabaseUser.user_metadata?.avatar_url,
+        roles: (profile?.roles as UserRole[]) || [],
+        activeRole: (profile?.active_role as UserRole) || "collector_buyer",
+        createdAt: new Date(supabaseUser.created_at),
+      }
     }
-    setIsLoading(false)
+
+    return {
+      id: supabaseUser.id,
+      name: profile.name || supabaseUser.email?.split("@")[0] || "User",
+      email: supabaseUser.email || "",
+      avatar: profile.avatar_url,
+      roles: (profile.roles as UserRole[]) || [],
+      activeRole: (profile.active_role as UserRole) || "collector_buyer",
+      createdAt: new Date(supabaseUser.created_at),
+    }
+  }
+
+  useEffect(() => {
+    // Check current session on mount
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session?.user) {
+        setSupabaseUser(session.user)
+        const profile = await fetchProfile(session.user)
+        setUser(profile)
+        
+        // Check if user needs role selection (no roles set)
+        if (!profile?.roles || profile.roles.length === 0) {
+          setNeedsRoleSelection(true)
+        }
+      }
+      
+      setIsLoading(false)
+    }
+
+    initAuth()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setSupabaseUser(session.user)
+        const profile = await fetchProfile(session.user)
+        setUser(profile)
+        
+        if (!profile?.roles || profile.roles.length === 0) {
+          setNeedsRoleSelection(true)
+        }
+      } else {
+        setSupabaseUser(null)
+        setUser(null)
+        setNeedsRoleSelection(false)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true)
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-    const foundUser = mockUsers.find((u) => u.email === email && u.password === password)
-
-    if (!foundUser) {
+    if (error) {
       setIsLoading(false)
-      return { success: false, error: "Invalid email or password" }
+      return { success: false, error: error.message }
     }
 
-    const loggedInUser: User = {
-      ...foundUser.user,
-      activeRole: foundUser.user.roles[0],
+    if (data.user) {
+      setSupabaseUser(data.user)
+      const profile = await fetchProfile(data.user)
+      setUser(profile)
+      
+      // If user has multiple roles, they may need to select one
+      if (profile && profile.roles.length > 1) {
+        setNeedsRoleSelection(true)
+      }
     }
 
-    setUser(loggedInUser)
-    localStorage.setItem("offa_user", JSON.stringify(loggedInUser))
     setIsLoading(false)
-
-    // If user has multiple roles, they need to select one
-    if (foundUser.user.roles.length > 1) {
-      setNeedsRoleSelection(true)
-    }
-
     return { success: true }
   }
 
@@ -122,75 +152,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true)
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    // Check if user already exists
-    if (mockUsers.find((u) => u.email === email)) {
-      setIsLoading(false)
-      return { success: false, error: "An account with this email already exists" }
-    }
-
-    // Create new user (no roles yet - will be selected in onboarding)
-    const newUser: User = {
-      id: `user_${Date.now()}`,
-      name,
+    const { data, error } = await supabase.auth.signUp({
       email,
-      roles: [],
-      activeRole: "collector_buyer", // Default, will be set during role selection
-      createdAt: new Date(),
+      password,
+      options: {
+        emailRedirectTo:
+          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+          `${window.location.origin}/auth/callback`,
+        data: {
+          name,
+        },
+      },
+    })
+
+    if (error) {
+      setIsLoading(false)
+      return { success: false, error: error.message }
     }
 
-    setUser(newUser)
-    localStorage.setItem("offa_user", JSON.stringify(newUser))
-    setIsLoading(false)
-    setNeedsRoleSelection(true)
+    if (data.user) {
+      setSupabaseUser(data.user)
+      // The profile will be created by the database trigger
+      // For now, create a temporary user object
+      const newUser: User = {
+        id: data.user.id,
+        name,
+        email,
+        roles: [],
+        activeRole: "collector_buyer",
+        createdAt: new Date(),
+      }
+      setUser(newUser)
+      setNeedsRoleSelection(true)
+    }
 
+    setIsLoading(false)
     return { success: true }
   }
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
-    localStorage.removeItem("offa_user")
+    setSupabaseUser(null)
     setNeedsRoleSelection(false)
   }
 
-  const selectRole = (role: UserRole) => {
+  const selectRole = async (role: UserRole) => {
     if (!user) return
 
-    const updatedUser: User = {
-      ...user,
-      roles: user.roles.includes(role) ? user.roles : [...user.roles, role],
-      activeRole: role,
-    }
+    const updatedRoles = user.roles.includes(role) ? user.roles : [...user.roles, role]
 
-    setUser(updatedUser)
-    localStorage.setItem("offa_user", JSON.stringify(updatedUser))
-    setNeedsRoleSelection(false)
+    // Update profile in Supabase
+    const { error } = await supabase
+      .from("profiles")
+      .update({ roles: updatedRoles, active_role: role })
+      .eq("id", user.id)
+
+    if (!error) {
+      const updatedUser: User = {
+        ...user,
+        roles: updatedRoles,
+        activeRole: role,
+      }
+      setUser(updatedUser)
+      setNeedsRoleSelection(false)
+    }
   }
 
-  const switchRole = (role: UserRole) => {
+  const switchRole = async (role: UserRole) => {
     if (!user || !user.roles.includes(role)) return
 
-    const updatedUser: User = {
-      ...user,
-      activeRole: role,
-    }
+    // Update active role in Supabase
+    const { error } = await supabase
+      .from("profiles")
+      .update({ active_role: role })
+      .eq("id", user.id)
 
-    setUser(updatedUser)
-    localStorage.setItem("offa_user", JSON.stringify(updatedUser))
+    if (!error) {
+      const updatedUser: User = {
+        ...user,
+        activeRole: role,
+      }
+      setUser(updatedUser)
+    }
   }
 
-  const addRole = (role: UserRole) => {
+  const addRole = async (role: UserRole) => {
     if (!user || user.roles.includes(role)) return
 
-    const updatedUser: User = {
-      ...user,
-      roles: [...user.roles, role],
-    }
+    const updatedRoles = [...user.roles, role]
 
-    setUser(updatedUser)
-    localStorage.setItem("offa_user", JSON.stringify(updatedUser))
+    // Update roles in Supabase
+    const { error } = await supabase
+      .from("profiles")
+      .update({ roles: updatedRoles })
+      .eq("id", user.id)
+
+    if (!error) {
+      const updatedUser: User = {
+        ...user,
+        roles: updatedRoles,
+      }
+      setUser(updatedUser)
+    }
   }
 
   const hasRole = (role: UserRole) => {
@@ -201,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        supabaseUser,
         isLoading,
         isAuthenticated: !!user,
         login,
