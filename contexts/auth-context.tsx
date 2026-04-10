@@ -152,13 +152,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true)
 
+    // Build the redirect URL - use the v0 proxy URL if available, otherwise use origin
+    const redirectUrl = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL 
+      || `${window.location.origin}/auth/callback`
+    
+    console.log("[v0] Signup redirect URL:", redirectUrl)
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo:
-          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-          `${window.location.origin}/auth/callback`,
+        emailRedirectTo: redirectUrl,
         data: {
           name,
         },
