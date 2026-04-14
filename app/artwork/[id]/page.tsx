@@ -546,8 +546,10 @@ export default function ArtworkPage() {
 
             {/* Purchase / Contact Controls */}
             <div className="space-y-3">
-              <Button size="lg" className="w-full">
-                Purchase
+              <Button size="lg" className="w-full" asChild>
+                <Link href={`/payment/${artwork.id}`}>
+                  Purchase
+                </Link>
               </Button>
               <Button size="lg" variant="outline" className="w-full bg-transparent">
                 Make an Offer
