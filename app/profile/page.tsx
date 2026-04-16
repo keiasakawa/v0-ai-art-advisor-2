@@ -1,18 +1,35 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import { Mail, Calendar, Shield, Plus, Check, ShoppingBag, Store, Palette, Camera, Save } from "lucide-react"
-import { useAuth, type UserRole } from "@/contexts/auth-context"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Mail,
+  Calendar,
+  Shield,
+  Plus,
+  Check,
+  ShoppingBag,
+  Store,
+  Palette,
+  Camera,
+  Save,
+} from "lucide-react";
+import { useAuth, type UserRole } from "@/contexts/auth-context";
 
 const roleConfig = {
   collector_buyer: {
@@ -33,13 +50,13 @@ const roleConfig = {
     color: "bg-amber-100 text-amber-700",
     description: "Curate collections and advise collectors",
   },
-}
+};
 
 export default function ProfilePage() {
-  const router = useRouter()
-  const { user, isAuthenticated, isLoading, addRole, switchRole } = useAuth()
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading, addRole, switchRole } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -47,11 +64,11 @@ export default function ProfilePage() {
     email: "",
     bio: "",
     specialties: "",
-  })
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/login")
+      router.push("/login");
     }
     if (user) {
       setFormData({
@@ -59,32 +76,36 @@ export default function ProfilePage() {
         email: user.email,
         bio: "",
         specialties: "",
-      })
+      });
     }
-  }, [isLoading, isAuthenticated, router, user])
+  }, [isLoading, isAuthenticated, router, user]);
 
   if (isLoading || !user) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
-    )
+    );
   }
 
   const handleSave = async () => {
-    setIsSaving(true)
+    setIsSaving(true);
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    setIsSaving(false)
-    setIsEditing(false)
-  }
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setIsSaving(false);
+    setIsEditing(false);
+  };
 
   const handleAddRole = (role: UserRole) => {
-    addRole(role)
-  }
+    addRole(role);
+  };
 
-  const allRoles: UserRole[] = ["collector_buyer", "collector_seller", "curator"]
-  const availableRoles = allRoles.filter((role) => !user.roles.includes(role))
+  const allRoles: UserRole[] = [
+    "collector_buyer",
+    "collector_seller",
+    "curator",
+  ];
+  const availableRoles = allRoles.filter((role) => !user.roles.includes(role));
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-muted/30">
@@ -92,7 +113,9 @@ export default function ProfilePage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Profile Settings</h1>
-          <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
+          <p className="text-muted-foreground mt-1">
+            Manage your account and preferences
+          </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -102,10 +125,14 @@ export default function ProfilePage() {
               <CardContent className="pt-6 text-center">
                 <div className="relative inline-block">
                   <Avatar className="h-24 w-24 mx-auto">
-                    <AvatarImage src={user.avatar || "/placeholder.svg"} />
-                    <AvatarFallback className="text-2xl">{user.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <Button size="icon" variant="secondary" className="absolute bottom-0 right-0 h-8 w-8 rounded-full">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                  >
                     <Camera className="h-4 w-4" />
                   </Button>
                 </div>
@@ -113,12 +140,12 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   {user.roles.map((role) => {
-                    const config = roleConfig[role]
+                    const config = roleConfig[role];
                     return (
                       <Badge key={role} className={config.color}>
                         {config.label}
                       </Badge>
-                    )
+                    );
                   })}
                 </div>
               </CardContent>
@@ -154,15 +181,23 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Personal Information</CardTitle>
-                    <CardDescription>Update your profile details</CardDescription>
+                    <CardDescription>
+                      Update your profile details
+                    </CardDescription>
                   </div>
                   {!isEditing ? (
-                    <Button variant="outline" onClick={() => setIsEditing(true)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsEditing(true)}
+                    >
                       Edit Profile
                     </Button>
                   ) : (
                     <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => setIsEditing(false)}>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setIsEditing(false)}
+                      >
                         Cancel
                       </Button>
                       <Button onClick={handleSave} disabled={isSaving}>
@@ -184,7 +219,9 @@ export default function ProfilePage() {
                     <Input
                       id="name"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
                       disabled={!isEditing}
                     />
                   </div>
@@ -194,7 +231,9 @@ export default function ProfilePage() {
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
                       disabled={!isEditing}
                     />
                   </div>
@@ -205,19 +244,28 @@ export default function ProfilePage() {
                     id="bio"
                     placeholder="Tell us about yourself and your interest in art..."
                     value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bio: e.target.value })
+                    }
                     disabled={!isEditing}
                     rows={4}
                   />
                 </div>
                 {user.roles.includes("curator") && (
                   <div className="space-y-2">
-                    <Label htmlFor="specialties">Specialty Tags (comma separated)</Label>
+                    <Label htmlFor="specialties">
+                      Specialty Tags (comma separated)
+                    </Label>
                     <Input
                       id="specialties"
                       placeholder="Contemporary Art, Abstract Expressionism, Emerging Artists"
                       value={formData.specialties}
-                      onChange={(e) => setFormData({ ...formData, specialties: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          specialties: e.target.value,
+                        })
+                      }
                       disabled={!isEditing}
                     />
                   </div>
@@ -229,7 +277,9 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle>Your Roles</CardTitle>
-                <CardDescription>Manage your roles on OFFA - you can have multiple roles</CardDescription>
+                <CardDescription>
+                  Manage your roles on OFFA - you can have multiple roles
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -238,9 +288,9 @@ export default function ProfilePage() {
                     <h4 className="text-sm font-medium mb-3">Active Roles</h4>
                     <div className="space-y-2">
                       {user.roles.map((role) => {
-                        const config = roleConfig[role]
-                        const Icon = config.icon
-                        const isActive = user.activeRole === role
+                        const config = roleConfig[role];
+                        const Icon = config.icon;
+                        const isActive = user.activeRole === role;
 
                         return (
                           <motion.div
@@ -248,7 +298,9 @@ export default function ProfilePage() {
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             className={`flex items-center justify-between p-3 rounded-lg border ${
-                              isActive ? "border-primary bg-primary/5" : "border-border"
+                              isActive
+                                ? "border-primary bg-primary/5"
+                                : "border-border"
                             }`}
                           >
                             <div className="flex items-center gap-3">
@@ -257,7 +309,9 @@ export default function ProfilePage() {
                               </div>
                               <div>
                                 <p className="font-medium">{config.label}</p>
-                                <p className="text-xs text-muted-foreground">{config.description}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {config.description}
+                                </p>
                               </div>
                             </div>
                             {isActive ? (
@@ -266,12 +320,16 @@ export default function ProfilePage() {
                                 Active
                               </Badge>
                             ) : (
-                              <Button variant="outline" size="sm" onClick={() => switchRole(role)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => switchRole(role)}
+                              >
                                 Switch
                               </Button>
                             )}
                           </motion.div>
-                        )
+                        );
                       })}
                     </div>
                   </div>
@@ -281,11 +339,13 @@ export default function ProfilePage() {
                     <>
                       <Separator />
                       <div>
-                        <h4 className="text-sm font-medium mb-3">Add More Roles</h4>
+                        <h4 className="text-sm font-medium mb-3">
+                          Add More Roles
+                        </h4>
                         <div className="space-y-2">
                           {availableRoles.map((role) => {
-                            const config = roleConfig[role]
-                            const Icon = config.icon
+                            const config = roleConfig[role];
+                            const Icon = config.icon;
 
                             return (
                               <div
@@ -297,16 +357,24 @@ export default function ProfilePage() {
                                     <Icon className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                   <div>
-                                    <p className="font-medium">{config.label}</p>
-                                    <p className="text-xs text-muted-foreground">{config.description}</p>
+                                    <p className="font-medium">
+                                      {config.label}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {config.description}
+                                    </p>
                                   </div>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => handleAddRole(role)}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddRole(role)}
+                                >
                                   <Plus className="h-4 w-4 mr-1" />
                                   Add Role
                                 </Button>
                               </div>
-                            )
+                            );
                           })}
                         </div>
                       </div>
@@ -319,5 +387,5 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
