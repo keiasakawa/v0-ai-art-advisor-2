@@ -176,7 +176,7 @@ export default function NewArtworkPage() {
       // For now, we'll use a placeholder image URL
       const imageUrl = formData.images.length > 0 ? "/abstract-colorful-artwork.png" : "/placeholder.svg"
 
-      artworkStorage.add({
+      const result = await artworkStorage.add({
         title: formData.title,
         artist: formData.artist,
         year: formData.year,
@@ -199,7 +199,11 @@ export default function NewArtworkPage() {
         additionalNotes: formData.additionalNotes,
       })
 
-      console.log("[v0] Artwork successfully saved to localStorage")
+      if (!result) {
+        throw new Error("Failed to save artwork")
+      }
+
+      console.log("[v0] Artwork successfully saved to Supabase:", result.id)
     } catch (error) {
       console.error("[v0] Error saving artwork:", error)
       setIsSubmitting(false)

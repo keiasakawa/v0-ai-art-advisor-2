@@ -56,15 +56,18 @@ export default function MyCollectionPage() {
     if (!isLoading && !isAuthenticated) {
       router.push("/login")
     } else if (isAuthenticated) {
-      const artworks = artworkStorage.getAll()
-      setCollection(artworks)
+      const fetchArtworks = async () => {
+        const artworks = await artworkStorage.getAll()
+        setCollection(artworks)
+      }
+      fetchArtworks()
     }
   }, [isLoading, isAuthenticated, router])
 
-  const handleAddArtwork = () => {
+  const handleAddArtwork = async () => {
     if (!newArtwork.title || !newArtwork.artist) return
 
-    const addedArtwork = artworkStorage.add({
+    const addedArtwork = await artworkStorage.add({
       title: newArtwork.title || "",
       artist: newArtwork.artist || "",
       year: newArtwork.year || "",
@@ -81,7 +84,9 @@ export default function MyCollectionPage() {
       status: "draft",
     })
 
-    setCollection([addedArtwork, ...collection])
+    if (addedArtwork) {
+      setCollection([addedArtwork, ...collection])
+    }
     setNewArtwork({ certificate: false, condition: "Excellent", status: "draft" })
     setIsAddDialogOpen(false)
   }
