@@ -1,27 +1,29 @@
-'use server'
+"use server";
 
-import { stripe } from '@/lib/stripe'
+import { stripe } from "@/lib/stripe";
 
 interface ArtworkCheckoutData {
-  artworkId: string
-  title: string
-  artist: string
-  priceInCents: number
-  imageUrl?: string
+  artworkId: string;
+  title: string;
+  artist: string;
+  priceInCents: number;
+  imageUrl?: string;
 }
 
-export async function startArtworkCheckoutSession(artwork: ArtworkCheckoutData) {
+export async function startArtworkCheckoutSession(
+  artwork: ArtworkCheckoutData,
+) {
   if (!artwork.priceInCents || artwork.priceInCents <= 0) {
-    throw new Error('Invalid artwork price')
+    throw new Error("Invalid artwork price");
   }
 
   const session = await stripe.checkout.sessions.create({
-    ui_mode: 'embedded',
-    redirect_on_completion: 'never',
+    ui_mode: "embedded_page",
+    redirect_on_completion: "never",
     line_items: [
       {
         price_data: {
-          currency: 'usd',
+          currency: "usd",
           product_data: {
             name: artwork.title,
             description: `By ${artwork.artist}`,
@@ -31,22 +33,22 @@ export async function startArtworkCheckoutSession(artwork: ArtworkCheckoutData) 
         quantity: 1,
       },
     ],
-    mode: 'payment',
+    mode: "payment",
     metadata: {
       artworkId: artwork.artworkId,
     },
-  })
+  });
 
-  return session.client_secret
+  return session.client_secret;
 }
 
 export async function getCheckoutSessionStatus(sessionId: string) {
-  const session = await stripe.checkout.sessions.retrieve(sessionId)
-  
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+
   return {
     status: session.status,
     paymentStatus: session.payment_status,
     customerEmail: session.customer_details?.email,
     artworkId: session.metadata?.artworkId,
-  }
+  };
 }
