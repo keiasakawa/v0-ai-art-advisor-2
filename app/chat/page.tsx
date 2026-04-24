@@ -1,26 +1,32 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Avatar } from "@/components/ui/avatar"
-import { Send, Sparkles, User } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import { Send, Sparkles, User } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { sendChatMessage } from "@/lib/api";
+
+interface ChatResponse {
+  message: string;
+  conversationId?: string;
+}
 
 interface Message {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  timestamp: Date
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }
 
 export default function ChatPage() {
-  const searchParams = useSearchParams()
-  const initialQuery = searchParams.get("q")
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q");
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -30,35 +36,35 @@ export default function ChatPage() {
         "Hello! I'm your AI Art Advisor. I can help you discover artworks, learn about artists, understand art movements, and guide your collecting journey. What would you like to know about art today?",
       timestamp: new Date(),
     },
-  ])
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [initialQueryProcessed, setInitialQueryProcessed] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [initialQueryProcessed, setInitialQueryProcessed] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     if (initialQuery && !initialQueryProcessed) {
-      setInitialQueryProcessed(true)
+      setInitialQueryProcessed(true);
       const timer = setTimeout(() => {
-        submitMessage(initialQuery)
-      }, 500)
-      return () => clearTimeout(timer)
+        submitMessage(initialQuery);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [initialQuery, initialQueryProcessed])
+  }, [initialQuery, initialQueryProcessed]);
 
   const getSimulatedResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase()
+    const input = userInput.toLowerCase();
 
     if (input.includes("abstract") || input.includes("contemporary")) {
-      return "Abstract and contemporary art offer incredible diversity! I'd recommend exploring artists like Gerhard Richter, Julie Mehretu, or Mark Bradford. These artists work across different price points. What's your budget range, and are you drawn to colorful pieces or more monochromatic works?"
+      return "Abstract and contemporary art offer incredible diversity! I'd recommend exploring artists like Gerhard Richter, Julie Mehretu, or Mark Bradford. These artists work across different price points. What's your budget range, and are you drawn to colorful pieces or more monochromatic works?";
     }
 
     if (
@@ -68,57 +74,82 @@ export default function ChatPage() {
       input.includes("$10k") ||
       input.includes("under")
     ) {
-      return "Great question! Art collecting is accessible at many price points. Emerging artists often have works from $500-$5,000, mid-career artists range from $5,000-$50,000, and established artists can be $50,000+. For contemporary artists under $10k, I'd recommend exploring works by emerging talents like Jordy Kerwick, Cristina BanBan, or Tidawhitney Lek. Prints and editions are also wonderful ways to collect iconic works affordably. Would you like specific recommendations in any style?"
+      return "Great question! Art collecting is accessible at many price points. Emerging artists often have works from $500-$5,000, mid-career artists range from $5,000-$50,000, and established artists can be $50,000+. For contemporary artists under $10k, I'd recommend exploring works by emerging talents like Jordy Kerwick, Cristina BanBan, or Tidawhitney Lek. Prints and editions are also wonderful ways to collect iconic works affordably. Would you like specific recommendations in any style?";
     }
 
-    if (input.includes("start") || input.includes("beginner") || input.includes("first") || input.includes("buying")) {
-      return "Starting an art collection is exciting! Here are my top tips:\n\n1) **Buy what you love** - not what you think will appreciate\n2) **Visit galleries and museums** to train your eye\n3) **Start with emerging artists** or prints from established ones\n4) **Consider the artwork's scale** for your space\n5) **Ask for provenance** and authenticity certificates\n\nWould you like recommendations based on your taste, budget, or space?"
+    if (
+      input.includes("start") ||
+      input.includes("beginner") ||
+      input.includes("first") ||
+      input.includes("buying")
+    ) {
+      return "Starting an art collection is exciting! Here are my top tips:\n\n1) **Buy what you love** - not what you think will appreciate\n2) **Visit galleries and museums** to train your eye\n3) **Start with emerging artists** or prints from established ones\n4) **Consider the artwork's scale** for your space\n5) **Ask for provenance** and authenticity certificates\n\nWould you like recommendations based on your taste, budget, or space?";
     }
 
-    if (input.includes("invest") || input.includes("value") || input.includes("valuation")) {
-      return "Art valuations are influenced by several key factors:\n\n• **Artist's reputation** - exhibition history, institutional collections, critical reception\n• **Provenance** - ownership history and authenticity documentation\n• **Condition** - physical state and restoration history\n• **Rarity** - edition size, period of creation\n• **Market demand** - auction results, gallery sales\n\nBlue-chip artists tend to hold value, while emerging artists offer higher risk/reward. Should I suggest some artists with strong market performance?"
+    if (
+      input.includes("invest") ||
+      input.includes("value") ||
+      input.includes("valuation")
+    ) {
+      return "Art valuations are influenced by several key factors:\n\n• **Artist's reputation** - exhibition history, institutional collections, critical reception\n• **Provenance** - ownership history and authenticity documentation\n• **Condition** - physical state and restoration history\n• **Rarity** - edition size, period of creation\n• **Market demand** - auction results, gallery sales\n\nBlue-chip artists tend to hold value, while emerging artists offer higher risk/reward. Should I suggest some artists with strong market performance?";
     }
 
-    return "That's an interesting question about art! I can help you with recommendations based on style, budget, and space. I can also explain art movements, discuss specific artists, or guide you on authentication and provenance. What aspect of art collecting would you like to explore further?"
-  }
+    return "That's an interesting question about art! I can help you with recommendations based on style, budget, and space. I can also explain art movements, discuss specific artists, or guide you on authentication and provenance. What aspect of art collecting would you like to explore further?";
+  };
+
+  const getResponse = async (userInput: string): Promise<ChatResponse> => {
+    const conversationId = sessionStorage.getItem("conversationId") || "";
+    console.log("User input:", userInput);
+    const res = await sendChatMessage(userInput, conversationId);
+
+    console.log("AI response:", res);
+
+    if (!conversationId) {
+      sessionStorage.setItem("conversationId", res.conversationId || "");
+    }
+
+    return res;
+  };
 
   const submitMessage = (messageContent: string) => {
-    if (!messageContent.trim() || isLoading) return
+    if (!messageContent.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: messageContent.trim(),
       timestamp: new Date(),
-    }
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsLoading(true)
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
 
-    setTimeout(() => {
+    getResponse(userMessage.content).then((response) => {
+      console.log("Received response from API:", response);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: getSimulatedResponse(userMessage.content),
+        content: response.message,
         timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiMessage])
-      setIsLoading(false)
-    }, 1000)
-  }
+      };
+      console.log("Simulated AI response:", aiMessage);
+      setMessages((prev) => [...prev, aiMessage]);
+      setIsLoading(false);
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    submitMessage(input)
-  }
+    e.preventDefault();
+    submitMessage(input);
+  };
 
   const suggestedQuestions = [
     "What should I know about buying my first artwork?",
     "Show me contemporary abstract artists under $10k",
     "How do I verify artwork authenticity?",
     "What are emerging art trends in 2024?",
-  ]
+  ];
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -130,7 +161,9 @@ export default function ChatPage() {
           </div>
           <div>
             <h1 className="text-xl font-semibold">AI Art Advisor</h1>
-            <p className="text-sm text-muted-foreground">Expert guidance for collectors</p>
+            <p className="text-sm text-muted-foreground">
+              Expert guidance for collectors
+            </p>
           </div>
         </div>
       </header>
@@ -151,19 +184,29 @@ export default function ChatPage() {
                 <Avatar className="h-10 w-10 shrink-0">
                   <div
                     className={`flex h-full w-full items-center justify-center ${
-                      message.role === "assistant" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                      message.role === "assistant"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
                     }`}
                   >
-                    {message.role === "assistant" ? <Sparkles className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                    {message.role === "assistant" ? (
+                      <Sparkles className="h-5 w-5" />
+                    ) : (
+                      <User className="h-5 w-5" />
+                    )}
                   </div>
                 </Avatar>
 
                 <Card
                   className={`max-w-[80%] p-4 ${
-                    message.role === "user" ? "bg-primary text-primary-foreground" : "bg-card"
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card"
                   }`}
                 >
-                  <p className="text-pretty leading-relaxed">{message.content}</p>
+                  <p className="text-pretty leading-relaxed">
+                    {message.content}
+                  </p>
                   <time className="mt-2 block text-xs opacity-70">
                     {message.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
@@ -176,7 +219,11 @@ export default function ChatPage() {
           </AnimatePresence>
 
           {isLoading && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-4"
+            >
               <Avatar className="h-10 w-10">
                 <div className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground">
                   <Sparkles className="h-5 w-5" />
@@ -200,7 +247,9 @@ export default function ChatPage() {
       {messages.length === 1 && (
         <div className="border-t bg-muted/30 px-4 py-4">
           <div className="mx-auto max-w-4xl">
-            <p className="mb-3 text-sm font-medium text-muted-foreground">Suggested questions:</p>
+            <p className="mb-3 text-sm font-medium text-muted-foreground">
+              Suggested questions:
+            </p>
             <div className="flex flex-wrap gap-2">
               {suggestedQuestions.map((question) => (
                 <Button
@@ -228,12 +277,16 @@ export default function ChatPage() {
             disabled={isLoading}
             className="flex-1"
           />
-          <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
+          <Button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            size="icon"
+          >
             <Send className="h-4 w-4" />
             <span className="sr-only">Send message</span>
           </Button>
         </form>
       </div>
     </div>
-  )
+  );
 }
