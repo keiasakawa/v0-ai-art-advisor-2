@@ -115,15 +115,3 @@ export default function PaymentSuccessPage() {
     </Suspense>
   );
 }
-
-export default function PaymentSuccessPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Confirming your payment...</div>
-      </div>
-    }>
-      <PaymentSuccessContent />
-    </Suspense>
-  )
-}
