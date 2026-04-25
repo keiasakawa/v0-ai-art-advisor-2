@@ -1,41 +1,43 @@
-'use client'
+"use client";
 
-import { Suspense, useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { CheckCircle, Package, Mail, ArrowRight } from 'lucide-react'
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { CheckCircle, Package, Mail, ArrowRight } from "lucide-react";
 
-import { Button } from '@/components/ui/button'
-import { getCheckoutSessionStatus } from '@/app/actions/stripe'
+import { Button } from "@/components/ui/button";
+import { getCheckoutSessionStatus } from "@/app/actions/stripe";
 
 function PaymentSuccessContent() {
-  const searchParams = useSearchParams()
-  const sessionId = searchParams.get('session_id')
-  
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("session_id");
+
   const [status, setStatus] = useState<{
-    status: string | null
-    paymentStatus: string
-    customerEmail: string | null | undefined
-    artworkId: string | undefined
-  } | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+    status: string | null;
+    paymentStatus: string;
+    customerEmail: string | null | undefined;
+    artworkId: string | undefined;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (sessionId) {
       getCheckoutSessionStatus(sessionId)
         .then(setStatus)
-        .finally(() => setIsLoading(false))
+        .finally(() => setIsLoading(false));
     } else {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [sessionId])
+  }, [sessionId]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Confirming your payment...</div>
+        <div className="animate-pulse text-muted-foreground">
+          Confirming your payment...
+        </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -48,7 +50,9 @@ function PaymentSuccessContent() {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Payment Successful!</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Payment Successful!
+          </h1>
           <p className="text-muted-foreground">
             Thank you for your purchase. Your order has been confirmed.
           </p>
@@ -58,15 +62,17 @@ function PaymentSuccessContent() {
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-primary" />
             <div>
-              <p className="text-sm font-medium text-foreground">Confirmation Email</p>
+              <p className="text-sm font-medium text-foreground">
+                Confirmation Email
+              </p>
               <p className="text-sm text-muted-foreground">
-                {status?.customerEmail 
-                  ? `Sent to ${status.customerEmail}` 
-                  : 'A confirmation email will be sent shortly'}
+                {status?.customerEmail
+                  ? `Sent to ${status.customerEmail}`
+                  : "A confirmation email will be sent shortly"}
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <Package className="h-5 w-5 text-primary" />
             <div>
@@ -91,7 +97,23 @@ function PaymentSuccessContent() {
         </div>
       </div>
     </div>
-  )
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">
+            Confirming your payment...
+          </div>
+        </div>
+      }
+    >
+      <PaymentSuccessContent />
+    </Suspense>
+  );
 }
 
 export default function PaymentSuccessPage() {
