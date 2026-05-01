@@ -108,16 +108,27 @@ export default function MyCollectionPage() {
             </h1>
             <p className="text-muted-foreground mt-1">Register and manage artworks you own</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg" asChild>
-                <Link href="/artwork/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Artwork
-                </Link>
+          <div className="flex gap-3">
+            {collection.length === 0 && (
+              <Button 
+                size="lg" 
+                variant="outline" 
+                onClick={handleSeedData}
+                disabled={isSeeding}
+              >
+                {isSeeding ? "Seeding..." : "Load Demo Data"}
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            )}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" asChild>
+                  <Link href="/artwork/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Artwork
+                  </Link>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Artwork</DialogTitle>
                 <DialogDescription>
@@ -294,8 +305,9 @@ export default function MyCollectionPage() {
                   </Button>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Stats */}
