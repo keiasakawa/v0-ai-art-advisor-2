@@ -46,11 +46,31 @@ export default function MyCollectionPage() {
   const { user, isAuthenticated, hasRole, isLoading } = useAuth()
   const [collection, setCollection] = useState<any[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isSeeding, setIsSeeding] = useState(false)
   const [newArtwork, setNewArtwork] = useState<any>({
     certificate: false,
     condition: "Excellent",
     status: "draft",
   })
+
+  const handleSeedData = async () => {
+    setIsSeeding(true)
+    try {
+      const response = await fetch("/api/seed-artworks", { method: "POST" })
+      const data = await response.json()
+      
+      if (data.success) {
+        const artworks = await artworkStorage.getAll()
+        setCollection(artworks)
+      } else {
+        console.error("Failed to seed:", data.error)
+      }
+    } catch (error) {
+      console.error("Error seeding data:", error)
+    } finally {
+      setIsSeeding(false)
+    }
+  }
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
