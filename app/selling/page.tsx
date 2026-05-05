@@ -40,8 +40,11 @@ export default function SellingDashboard() {
     if (!isLoading && !isAuthenticated) {
       router.push("/login")
     } else if (isAuthenticated) {
-      const artworks = artworkStorage.getAll()
-      setListings(artworks)
+      const fetchArtworks = async () => {
+        const artworks = await artworkStorage.getAll()
+        setListings(artworks)
+      }
+      fetchArtworks()
     }
   }, [isLoading, isAuthenticated, router])
 

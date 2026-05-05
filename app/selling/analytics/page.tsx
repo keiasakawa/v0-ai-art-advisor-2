@@ -67,15 +67,18 @@ export default function SellingAnalyticsPage() {
     } else if (isAuthenticated && !hasRole("collector_seller")) {
       router.push("/selling")
     } else if (isAuthenticated) {
-      const artworks = artworkStorage.getAll()
-      setListings(artworks)
+      const fetchArtworks = async () => {
+        const artworks = await artworkStorage.getAll()
+        setListings(artworks)
 
-      // Generate analytics for each artwork
-      const analytics: Record<string, ReturnType<typeof generateAnalytics>> = {}
-      artworks.forEach((artwork) => {
-        analytics[artwork.id] = generateAnalytics(artwork)
-      })
-      setAnalyticsData(analytics)
+        // Generate analytics for each artwork
+        const analytics: Record<string, ReturnType<typeof generateAnalytics>> = {}
+        artworks.forEach((artwork) => {
+          analytics[artwork.id] = generateAnalytics(artwork)
+        })
+        setAnalyticsData(analytics)
+      }
+      fetchArtworks()
     }
   }, [isLoading, isAuthenticated, hasRole, router])
 
