@@ -117,6 +117,13 @@ export default function EditArtworkPage() {
     additionalNotes: "",
   })
 
+  // Redirect if not authenticated or doesn't have seller role
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || !hasRole("collector_seller"))) {
+      router.push("/login")
+    }
+  }, [isLoading, isAuthenticated, hasRole, router])
+
   // Load artwork data
   useEffect(() => {
     // In real app, fetch from API using artworkId
@@ -132,10 +139,12 @@ export default function EditArtworkPage() {
     loadArtwork()
   }, [artworkId])
 
-  // Redirect if not authenticated or doesn't have seller role
-  if (!isLoading && (!isAuthenticated || !hasRole("collector_seller"))) {
-    router.push("/login")
-    return null
+  if (isLoading || (!isAuthenticated || !hasRole("collector_seller"))) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
   }
 
   if (!dataLoaded) {
