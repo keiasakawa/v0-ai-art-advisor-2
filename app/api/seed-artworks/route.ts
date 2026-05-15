@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
-import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 const mockArtworks = [
   {
@@ -13,7 +13,8 @@ const mockArtworks = [
     provenance: "Acquired directly from artist studio, New York",
     certificate: true,
     condition: "Excellent",
-    description: "A mesmerizing abstract piece featuring swirling cosmic colors and dynamic brushwork that evokes the vastness of space.",
+    description:
+      "A mesmerizing abstract piece featuring swirling cosmic colors and dynamic brushwork that evokes the vastness of space.",
     image_url: "/space-abstract-art.jpg",
     status: "listed",
     signed: true,
@@ -29,7 +30,8 @@ const mockArtworks = [
     provenance: "Gallery acquisition, San Francisco",
     certificate: true,
     condition: "Excellent",
-    description: "Bold geometric forms intersect with organic shapes in this striking commentary on city life and human connection.",
+    description:
+      "Bold geometric forms intersect with organic shapes in this striking commentary on city life and human connection.",
     image_url: "/abstract-urban-painting.png",
     status: "listed",
     signed: true,
@@ -45,7 +47,8 @@ const mockArtworks = [
     provenance: "Private collection, Stockholm",
     certificate: true,
     condition: "Excellent",
-    description: "Part of the acclaimed Ethereal series, this piece captures the ephemeral beauty of Nordic light through layers of translucent color.",
+    description:
+      "Part of the acclaimed Ethereal series, this piece captures the ephemeral beauty of Nordic light through layers of translucent color.",
     image_url: "/ethereal-landscape-painting.jpg",
     status: "listed",
     signed: true,
@@ -61,7 +64,8 @@ const mockArtworks = [
     provenance: "Artist studio, Tokyo",
     certificate: true,
     condition: "Mint",
-    description: "A stunning fusion of traditional Japanese aesthetics with contemporary digital art techniques.",
+    description:
+      "A stunning fusion of traditional Japanese aesthetics with contemporary digital art techniques.",
     image_url: "/digital-art-colorful.jpg",
     status: "listed",
     signed: false,
@@ -77,7 +81,8 @@ const mockArtworks = [
     provenance: "Gallery acquisition, Mumbai",
     certificate: true,
     condition: "Excellent",
-    description: "Intricate geometric patterns inspired by traditional Indian architecture, enhanced with 24k gold leaf accents.",
+    description:
+      "Intricate geometric patterns inspired by traditional Indian architecture, enhanced with 24k gold leaf accents.",
     image_url: "/geometric-abstract.png",
     status: "listed",
     signed: true,
@@ -93,7 +98,8 @@ const mockArtworks = [
     provenance: "Estate sale, London",
     certificate: false,
     condition: "Very Good",
-    description: "Bold color fields and fluid forms create a sense of movement and emotional depth in this contemporary masterwork.",
+    description:
+      "Bold color fields and fluid forms create a sense of movement and emotional depth in this contemporary masterwork.",
     image_url: "/contemporary-abstract.jpg",
     status: "listed",
     signed: true,
@@ -109,7 +115,8 @@ const mockArtworks = [
     provenance: "Acquired from Biennale exhibition",
     certificate: true,
     condition: "Excellent",
-    description: "Sculptural wall piece exploring the boundaries between organic and synthetic materials.",
+    description:
+      "Sculptural wall piece exploring the boundaries between organic and synthetic materials.",
     image_url: "/abstract-latex-sculpture-hanging-organic-forms.jpg",
     status: "listed",
     signed: false,
@@ -125,7 +132,8 @@ const mockArtworks = [
     provenance: "Museum deaccession, Berlin",
     certificate: true,
     condition: "Good",
-    description: "A powerful piece from Weber's acclaimed Industrial Memory series, combining raw materials with minimalist aesthetics.",
+    description:
+      "A powerful piece from Weber's acclaimed Industrial Memory series, combining raw materials with minimalist aesthetics.",
     image_url: "/industrial-felt-art-installation-gray-minimalist.jpg",
     status: "listed",
     signed: true,
@@ -141,7 +149,8 @@ const mockArtworks = [
     provenance: "Direct from artist, Lagos",
     certificate: true,
     condition: "Mint",
-    description: "A stunning bronze sculpture celebrating African heritage and feminine strength.",
+    description:
+      "A stunning bronze sculpture celebrating African heritage and feminine strength.",
     image_url: "/bronze-sculpture-female-figure-african-art-contemp.jpg",
     status: "listed",
     signed: true,
@@ -157,56 +166,61 @@ const mockArtworks = [
     provenance: "Gallery acquisition, Mexico City",
     certificate: true,
     condition: "Excellent",
-    description: "An extraordinary tapestry created from thousands of recycled bottle caps, telling stories of community and sustainability.",
+    description:
+      "An extraordinary tapestry created from thousands of recycled bottle caps, telling stories of community and sustainability.",
     image_url: "/metallic-tapestry-gold-silver-bottle-caps-woven-ar.jpg",
     status: "listed",
     signed: true,
   },
-]
+];
 
 export async function POST() {
   try {
-    const supabase = await createClient()
-    
+    const supabase = await createClient();
+
     // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) {
       return NextResponse.json(
         { error: "You must be logged in to seed artworks" },
-        { status: 401 }
-      )
+        { status: 401 },
+      );
     }
 
     // Insert artworks with the current user's ID
-    const artworksWithUserId = mockArtworks.map(artwork => ({
+    const artworksWithUserId = mockArtworks.map((artwork) => ({
       ...artwork,
       user_id: user.id,
-    }))
+    }));
 
     const { data, error } = await supabase
       .from("artworks")
       .insert(artworksWithUserId)
-      .select()
+      .select();
 
     if (error) {
-      console.error("[v0] Error seeding artworks:", error)
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
+      console.error("[v0] Error seeding artworks:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    console.log(
+      `[v0] Successfully seeded ${data.length} artworks for user ${user.id}`,
+    );
 
     return NextResponse.json({
       success: true,
       message: `Successfully seeded ${data.length} artworks`,
       artworks: data,
-    })
+    });
   } catch (error) {
-    console.error("[v0] Unexpected error:", error)
+    console.error("[v0] Unexpected error:", error);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
