@@ -6,6 +6,19 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import {
   Store,
   Plus,
@@ -18,6 +31,9 @@ import {
   AlertCircle,
   ArrowRight,
   BarChart3,
+  Upload,
+  X,
+  ImageIcon,
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
@@ -35,6 +51,21 @@ export default function SellingDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, hasRole, isLoading } = useAuth()
   const [listings, setListings] = useState<Artwork[]>([])
+  const [isListDialogOpen, setIsListDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [newArtwork, setNewArtwork] = useState({
+    title: "",
+    artist: "",
+    year: "",
+    medium: "",
+    height: "",
+    width: "",
+    unit: "in",
+    desiredPrice: "",
+    description: "",
+    images: [] as File[],
+  })
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -57,6 +88,79 @@ export default function SellingDashboard() {
       .reduce((sum, a) => sum + (Number.parseInt(a.desiredPrice) || Number.parseInt(a.purchasePrice) || 0), 0),
     pendingOffers: 0, // Would come from offers system
     viewsThisMonth: listings.reduce((sum) => sum + Math.floor(Math.random() * 100), 0), // Mock views for now
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    const newFiles = Array.from(files)
+    if (newArtwork.images.length + newFiles.length > 5) {
+      return
+    }
+
+    const previews = newFiles.map((file) => URL.createObjectURL(file))
+    setImagePreviews([...imagePreviews, ...previews])
+    setNewArtwork({ ...newArtwork, images: [...newArtwork.images, ...newFiles] })
+  }
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index])
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index))
+    setNewArtwork({
+      ...newArtwork,
+      images: newArtwork.images.filter((_, i) => i !== index),
+    })
+  }
+
+  const handleListArtwork = async () => {
+    if (!newArtwork.title || !newArtwork.artist || !newArtwork.desiredPrice) return
+
+    setIsSubmitting(true)
+    try {
+      const imageUrl = imagePreviews.length > 0 ? "/abstract-colorful-artwork.png" : "/placeholder.svg"
+
+      const result = await artworkStorage.add({
+        title: newArtwork.title,
+        artist: newArtwork.artist,
+        year: newArtwork.year,
+        medium: newArtwork.medium,
+        dimensions: newArtwork.height && newArtwork.width 
+          ? `${newArtwork.height} × ${newArtwork.width} ${newArtwork.unit}` 
+          : "",
+        purchasePrice: "",
+        purchaseYear: "",
+        desiredPrice: newArtwork.desiredPrice,
+        provenance: "",
+        certificate: false,
+        condition: "Excellent",
+        description: newArtwork.description,
+        imageUrl,
+        status: "listed",
+      })
+
+      if (result) {
+        setListings([result, ...listings])
+        setNewArtwork({
+          title: "",
+          artist: "",
+          year: "",
+          medium: "",
+          height: "",
+          width: "",
+          unit: "in",
+          desiredPrice: "",
+          description: "",
+          images: [],
+        })
+        setImagePreviews([])
+        setIsListDialogOpen(false)
+      }
+    } catch (error) {
+      console.error("Error listing artwork:", error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (isLoading) {
@@ -101,12 +205,182 @@ export default function SellingDashboard() {
             </h1>
             <p className="text-muted-foreground mt-1">Manage your art listings and sales</p>
           </div>
-          <Button size="lg" asChild>
-            <Link href="/artwork/new">
-              <Plus className="mr-2 h-4 w-4" />
-              List New Artwork
-            </Link>
-          </Button>
+          <Dialog open={isListDialogOpen} onOpenChange={setIsListDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg">
+                <Plus className="mr-2 h-4 w-4" />
+                List New Artwork
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>List New Artwork</DialogTitle>
+                <DialogDescription>Add details about your artwork to list it for sale</DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-6 py-4">
+                {/* Image Upload */}
+                <div className="space-y-3">
+                  <Label>Artwork Images</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
+                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+                        >
+                          <X className="h-4 w-4 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                    {imagePreviews.length < 5 && (
+                      <label className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2">
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Upload up to 5 images. First image will be the main image.</p>
+                </div>
+
+                {/* Title and Artist */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title *</Label>
+                    <Input
+                      id="title"
+                      placeholder="Artwork title"
+                      value={newArtwork.title}
+                      onChange={(e) => setNewArtwork({ ...newArtwork, title: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="artist">Artist *</Label>
+                    <Input
+                      id="artist"
+                      placeholder="Artist name"
+                      value={newArtwork.artist}
+                      onChange={(e) => setNewArtwork({ ...newArtwork, artist: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Year and Medium */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="year">Year Created</Label>
+                    <Input
+                      id="year"
+                      placeholder="e.g., 2023"
+                      value={newArtwork.year}
+                      onChange={(e) => setNewArtwork({ ...newArtwork, year: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="medium">Medium</Label>
+                    <Select
+                      value={newArtwork.medium}
+                      onValueChange={(value) => setNewArtwork({ ...newArtwork, medium: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select medium" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Oil on Canvas">Oil on Canvas</SelectItem>
+                        <SelectItem value="Acrylic on Canvas">Acrylic on Canvas</SelectItem>
+                        <SelectItem value="Watercolor">Watercolor</SelectItem>
+                        <SelectItem value="Mixed Media">Mixed Media</SelectItem>
+                        <SelectItem value="Digital Print">Digital Print</SelectItem>
+                        <SelectItem value="Photography">Photography</SelectItem>
+                        <SelectItem value="Sculpture">Sculpture</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Dimensions */}
+                <div className="space-y-2">
+                  <Label>Dimensions</Label>
+                  <div className="flex gap-3 items-center">
+                    <Input
+                      placeholder="Height"
+                      value={newArtwork.height}
+                      onChange={(e) => setNewArtwork({ ...newArtwork, height: e.target.value })}
+                      className="w-24"
+                    />
+                    <span className="text-muted-foreground">×</span>
+                    <Input
+                      placeholder="Width"
+                      value={newArtwork.width}
+                      onChange={(e) => setNewArtwork({ ...newArtwork, width: e.target.value })}
+                      className="w-24"
+                    />
+                    <Select
+                      value={newArtwork.unit}
+                      onValueChange={(value) => setNewArtwork({ ...newArtwork, unit: value })}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in">in</SelectItem>
+                        <SelectItem value="cm">cm</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="space-y-2">
+                  <Label htmlFor="price">Listing Price *</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="price"
+                      placeholder="0.00"
+                      value={newArtwork.desiredPrice}
+                      onChange={(e) => setNewArtwork({ ...newArtwork, desiredPrice: e.target.value })}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Tell potential buyers about this artwork..."
+                    value={newArtwork.description}
+                    onChange={(e) => setNewArtwork({ ...newArtwork, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsListDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleListArtwork} 
+                  disabled={isSubmitting || !newArtwork.title || !newArtwork.artist || !newArtwork.desiredPrice}
+                >
+                  {isSubmitting ? "Listing..." : "List Artwork"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Stats Grid */}
