@@ -19,6 +19,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Store,
   Plus,
   Package,
@@ -32,6 +39,9 @@ import {
   BarChart3,
   Gavel,
   Check,
+  MoreHorizontal,
+  XCircle,
+  Pencil,
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
@@ -118,6 +128,24 @@ export default function SellingDashboard() {
       console.error("Error listing artwork:", error)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleDelistArtwork = async (artworkId: string) => {
+    try {
+      const result = await artworkStorage.update(artworkId, {
+        status: "draft",
+      })
+
+      if (result) {
+        const artwork = listings.find(a => a.id === artworkId)
+        if (artwork) {
+          setCollectionArtworks([{ ...artwork, status: "draft" }, ...collectionArtworks])
+          setListings(listings.filter(a => a.id !== artworkId))
+        }
+      }
+    } catch (error) {
+      console.error("Error delisting artwork:", error)
     }
   }
 
@@ -476,16 +504,47 @@ export default function SellingDashboard() {
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <p className="text-lg font-bold">
-                          $
-                          {(
-                            Number.parseInt(listing.desiredPrice) ||
-                            Number.parseInt(listing.purchasePrice) ||
-                            0
-                          ).toLocaleString()}
-                        </p>
-                        <Button variant="outline" size="sm" className="mt-2 bg-transparent" asChild>
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                          <p className="text-lg font-bold">
+                            $
+                            {(
+                              Number.parseInt(listing.desiredPrice) ||
+                              Number.parseInt(listing.purchasePrice) ||
+                              0
+                            ).toLocaleString()}
+                          </p>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/artwork/${listing.id}/edit`}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit Listing
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/artwork/${listing.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Listing
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDelistArtwork(listing.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Take Down Listing
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        <Button variant="outline" size="sm" className="bg-transparent" asChild>
                           <Link href={`/artwork/${listing.id}/edit`}>Manage</Link>
                         </Button>
                       </div>
