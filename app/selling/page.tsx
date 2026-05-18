@@ -8,8 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Dialog,
   DialogContent,
@@ -31,9 +30,8 @@ import {
   AlertCircle,
   ArrowRight,
   BarChart3,
-  Upload,
-  X,
-  ImageIcon,
+  Gavel,
+  Check,
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
@@ -51,21 +49,14 @@ export default function SellingDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, hasRole, isLoading } = useAuth()
   const [listings, setListings] = useState<Artwork[]>([])
+  const [collectionArtworks, setCollectionArtworks] = useState<Artwork[]>([])
   const [isListDialogOpen, setIsListDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [imagePreviews, setImagePreviews] = useState<string[]>([])
-  const [newArtwork, setNewArtwork] = useState({
-    title: "",
-    artist: "",
-    year: "",
-    medium: "",
-    height: "",
-    width: "",
-    unit: "in",
-    desiredPrice: "",
-    description: "",
-    images: [] as File[],
-  })
+  const [selectedArtwork, setSelectedArtwork] = useState<string | null>(null)
+  const [listingType, setListingType] = useState<"fixed" | "auction">("fixed")
+  const [listingPrice, setListingPrice] = useState("")
+  const [auctionStartingBid, setAuctionStartingBid] = useState("")
+  const [auctionDuration, setAuctionDuration] = useState("7")
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -73,7 +64,10 @@ export default function SellingDashboard() {
     } else if (isAuthenticated) {
       const fetchArtworks = async () => {
         const artworks = await artworkStorage.getAll()
-        setListings(artworks)
+        // Listed artworks go to listings
+        setListings(artworks.filter(a => a.status === "listed" || a.status === "sold"))
+        // Draft artworks are available for listing
+        setCollectionArtworks(artworks.filter(a => a.status === "draft"))
       }
       fetchArtworks()
     }
@@ -90,70 +84,34 @@ export default function SellingDashboard() {
     viewsThisMonth: listings.reduce((sum) => sum + Math.floor(Math.random() * 100), 0), // Mock views for now
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-
-    const newFiles = Array.from(files)
-    if (newArtwork.images.length + newFiles.length > 5) {
-      return
-    }
-
-    const previews = newFiles.map((file) => URL.createObjectURL(file))
-    setImagePreviews([...imagePreviews, ...previews])
-    setNewArtwork({ ...newArtwork, images: [...newArtwork.images, ...newFiles] })
-  }
-
-  const removeImage = (index: number) => {
-    URL.revokeObjectURL(imagePreviews[index])
-    setImagePreviews(imagePreviews.filter((_, i) => i !== index))
-    setNewArtwork({
-      ...newArtwork,
-      images: newArtwork.images.filter((_, i) => i !== index),
-    })
-  }
-
   const handleListArtwork = async () => {
-    if (!newArtwork.title || !newArtwork.artist || !newArtwork.desiredPrice) return
+    if (!selectedArtwork) return
+    if (listingType === "fixed" && !listingPrice) return
+    if (listingType === "auction" && !auctionStartingBid) return
 
     setIsSubmitting(true)
     try {
-      const imageUrl = imagePreviews.length > 0 ? "/abstract-colorful-artwork.png" : "/placeholder.svg"
-
-      const result = await artworkStorage.add({
-        title: newArtwork.title,
-        artist: newArtwork.artist,
-        year: newArtwork.year,
-        medium: newArtwork.medium,
-        dimensions: newArtwork.height && newArtwork.width 
-          ? `${newArtwork.height} × ${newArtwork.width} ${newArtwork.unit}` 
-          : "",
-        purchasePrice: "",
-        purchaseYear: "",
-        desiredPrice: newArtwork.desiredPrice,
-        provenance: "",
-        certificate: false,
-        condition: "Excellent",
-        description: newArtwork.description,
-        imageUrl,
+      const price = listingType === "fixed" ? listingPrice : auctionStartingBid
+      
+      const result = await artworkStorage.update(selectedArtwork, {
         status: "listed",
+        desiredPrice: price,
       })
 
       if (result) {
-        setListings([result, ...listings])
-        setNewArtwork({
-          title: "",
-          artist: "",
-          year: "",
-          medium: "",
-          height: "",
-          width: "",
-          unit: "in",
-          desiredPrice: "",
-          description: "",
-          images: [],
-        })
-        setImagePreviews([])
+        // Move from collection to listings
+        const artwork = collectionArtworks.find(a => a.id === selectedArtwork)
+        if (artwork) {
+          setListings([{ ...artwork, status: "listed", desiredPrice: price }, ...listings])
+          setCollectionArtworks(collectionArtworks.filter(a => a.id !== selectedArtwork))
+        }
+        
+        // Reset form
+        setSelectedArtwork(null)
+        setListingType("fixed")
+        setListingPrice("")
+        setAuctionStartingBid("")
+        setAuctionDuration("7")
         setIsListDialogOpen(false)
       }
     } catch (error) {
@@ -214,158 +172,148 @@ export default function SellingDashboard() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>List New Artwork</DialogTitle>
-                <DialogDescription>Add details about your artwork to list it for sale</DialogDescription>
+                <DialogTitle>List Artwork for Sale</DialogTitle>
+                <DialogDescription>Select an artwork from your collection to list</DialogDescription>
               </DialogHeader>
 
               <div className="grid gap-6 py-4">
-                {/* Image Upload */}
+                {/* Artwork Selection */}
                 <div className="space-y-3">
-                  <Label>Artwork Images</Label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
-                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+                  <Label>Select Artwork from Collection</Label>
+                  {collectionArtworks.length === 0 ? (
+                    <div className="text-center py-8 border rounded-lg border-dashed">
+                      <Package className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground mb-3">No artworks available to list</p>
+                      <Button variant="outline" asChild>
+                        <Link href="/my-collection">Add to Collection First</Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 max-h-64 overflow-y-auto pr-2">
+                      {collectionArtworks.map((artwork) => (
+                        <div
+                          key={artwork.id}
+                          onClick={() => setSelectedArtwork(artwork.id)}
+                          className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            selectedArtwork === artwork.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/50"
+                          }`}
                         >
-                          <X className="h-4 w-4 text-white" />
-                        </button>
+                          <div className="relative h-16 w-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                            <img
+                              src={artwork.imageUrl || "/placeholder.svg"}
+                              alt={artwork.title}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{artwork.title}</p>
+                            <p className="text-sm text-muted-foreground truncate">{artwork.artist}</p>
+                            <p className="text-xs text-muted-foreground">{artwork.medium} {artwork.year && `• ${artwork.year}`}</p>
+                          </div>
+                          {selectedArtwork === artwork.id && (
+                            <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                              <Check className="h-4 w-4 text-primary-foreground" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Listing Type */}
+                {selectedArtwork && (
+                  <>
+                    <div className="space-y-3">
+                      <Label>Listing Type</Label>
+                      <RadioGroup
+                        value={listingType}
+                        onValueChange={(value) => setListingType(value as "fixed" | "auction")}
+                        className="grid grid-cols-2 gap-4"
+                      >
+                        <Label
+                          htmlFor="fixed"
+                          className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                            listingType === "fixed" ? "border-primary bg-primary/5" : "border-border"
+                          }`}
+                        >
+                          <RadioGroupItem value="fixed" id="fixed" className="sr-only" />
+                          <DollarSign className="h-6 w-6" />
+                          <span className="font-medium">Fixed Price</span>
+                          <span className="text-xs text-muted-foreground text-center">Set a buy-now price</span>
+                        </Label>
+                        <Label
+                          htmlFor="auction"
+                          className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                            listingType === "auction" ? "border-primary bg-primary/5" : "border-border"
+                          }`}
+                        >
+                          <RadioGroupItem value="auction" id="auction" className="sr-only" />
+                          <Gavel className="h-6 w-6" />
+                          <span className="font-medium">Auction</span>
+                          <span className="text-xs text-muted-foreground text-center">Let buyers bid</span>
+                        </Label>
+                      </RadioGroup>
+                    </div>
+
+                    {/* Price Input */}
+                    {listingType === "fixed" ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="price">Listing Price *</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="price"
+                            placeholder="0.00"
+                            value={listingPrice}
+                            onChange={(e) => setListingPrice(e.target.value)}
+                            className="pl-9"
+                          />
+                        </div>
                       </div>
-                    ))}
-                    {imagePreviews.length < 5 && (
-                      <label className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2">
-                        <Upload className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="startingBid">Starting Bid *</Label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="startingBid"
+                              placeholder="0.00"
+                              value={auctionStartingBid}
+                              onChange={(e) => setAuctionStartingBid(e.target.value)}
+                              className="pl-9"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="duration">Auction Duration</Label>
+                          <RadioGroup
+                            value={auctionDuration}
+                            onValueChange={setAuctionDuration}
+                            className="flex gap-3"
+                          >
+                            {["3", "7", "14"].map((days) => (
+                              <Label
+                                key={days}
+                                htmlFor={`duration-${days}`}
+                                className={`flex-1 text-center py-2 px-4 rounded-lg border cursor-pointer transition-colors ${
+                                  auctionDuration === days ? "border-primary bg-primary/5" : "border-border"
+                                }`}
+                              >
+                                <RadioGroupItem value={days} id={`duration-${days}`} className="sr-only" />
+                                <span className="font-medium">{days}</span>
+                                <span className="text-muted-foreground ml-1">days</span>
+                              </Label>
+                            ))}
+                          </RadioGroup>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Upload up to 5 images. First image will be the main image.</p>
-                </div>
-
-                {/* Title and Artist */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title *</Label>
-                    <Input
-                      id="title"
-                      placeholder="Artwork title"
-                      value={newArtwork.title}
-                      onChange={(e) => setNewArtwork({ ...newArtwork, title: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="artist">Artist *</Label>
-                    <Input
-                      id="artist"
-                      placeholder="Artist name"
-                      value={newArtwork.artist}
-                      onChange={(e) => setNewArtwork({ ...newArtwork, artist: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Year and Medium */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="year">Year Created</Label>
-                    <Input
-                      id="year"
-                      placeholder="e.g., 2023"
-                      value={newArtwork.year}
-                      onChange={(e) => setNewArtwork({ ...newArtwork, year: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="medium">Medium</Label>
-                    <Select
-                      value={newArtwork.medium}
-                      onValueChange={(value) => setNewArtwork({ ...newArtwork, medium: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select medium" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Oil on Canvas">Oil on Canvas</SelectItem>
-                        <SelectItem value="Acrylic on Canvas">Acrylic on Canvas</SelectItem>
-                        <SelectItem value="Watercolor">Watercolor</SelectItem>
-                        <SelectItem value="Mixed Media">Mixed Media</SelectItem>
-                        <SelectItem value="Digital Print">Digital Print</SelectItem>
-                        <SelectItem value="Photography">Photography</SelectItem>
-                        <SelectItem value="Sculpture">Sculpture</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Dimensions */}
-                <div className="space-y-2">
-                  <Label>Dimensions</Label>
-                  <div className="flex gap-3 items-center">
-                    <Input
-                      placeholder="Height"
-                      value={newArtwork.height}
-                      onChange={(e) => setNewArtwork({ ...newArtwork, height: e.target.value })}
-                      className="w-24"
-                    />
-                    <span className="text-muted-foreground">×</span>
-                    <Input
-                      placeholder="Width"
-                      value={newArtwork.width}
-                      onChange={(e) => setNewArtwork({ ...newArtwork, width: e.target.value })}
-                      className="w-24"
-                    />
-                    <Select
-                      value={newArtwork.unit}
-                      onValueChange={(value) => setNewArtwork({ ...newArtwork, unit: value })}
-                    >
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="in">in</SelectItem>
-                        <SelectItem value="cm">cm</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="space-y-2">
-                  <Label htmlFor="price">Listing Price *</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="price"
-                      placeholder="0.00"
-                      value={newArtwork.desiredPrice}
-                      onChange={(e) => setNewArtwork({ ...newArtwork, desiredPrice: e.target.value })}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Tell potential buyers about this artwork..."
-                    value={newArtwork.description}
-                    onChange={(e) => setNewArtwork({ ...newArtwork, description: e.target.value })}
-                    rows={3}
-                  />
-                </div>
+                  </>
+                )}
               </div>
 
               <DialogFooter>
@@ -374,9 +322,14 @@ export default function SellingDashboard() {
                 </Button>
                 <Button 
                   onClick={handleListArtwork} 
-                  disabled={isSubmitting || !newArtwork.title || !newArtwork.artist || !newArtwork.desiredPrice}
+                  disabled={
+                    isSubmitting || 
+                    !selectedArtwork || 
+                    (listingType === "fixed" && !listingPrice) ||
+                    (listingType === "auction" && !auctionStartingBid)
+                  }
                 >
-                  {isSubmitting ? "Listing..." : "List Artwork"}
+                  {isSubmitting ? "Listing..." : listingType === "auction" ? "Start Auction" : "List for Sale"}
                 </Button>
               </DialogFooter>
             </DialogContent>
