@@ -195,6 +195,8 @@ export default function NewArtworkPage() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
+    // Save the artwork to the database
+
     try {
       // In production, you would upload images to storage first
       // For now, we'll use a placeholder image URL
