@@ -1,60 +1,81 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { artworkStorage } from "@/lib/artwork-storage"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { Upload, X, ImageIcon, AlertCircle, CheckCircle2, ArrowLeft, Save, FileText } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import type React from "react";
+import { artworkStorage } from "@/lib/artwork-storage";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Upload,
+  X,
+  ImageIcon,
+  AlertCircle,
+  CheckCircle2,
+  ArrowLeft,
+  Save,
+  FileText,
+} from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 
 interface ArtworkFormData {
   // Image
-  images: File[]
+  images: File[];
   // Required fields
-  title: string
-  artist: string
-  height: string
-  width: string
-  heightUnit: "cm" | "in"
-  widthUnit: "cm" | "in"
+  title: string;
+  artist: string;
+  height: string;
+  width: string;
+  heightUnit: "cm" | "in";
+  widthUnit: "cm" | "in";
   // Optional dimensions
-  depth: string
-  depthUnit: "cm" | "in"
+  depth: string;
+  depthUnit: "cm" | "in";
   // Details
-  signed: "yes" | "no" | ""
-  edition: "yes" | "no" | ""
-  editionNumber: string
-  editionSize: string
-  year: string
-  medium: string
+  signed: "yes" | "no" | "";
+  edition: "yes" | "no" | "";
+  editionNumber: string;
+  editionSize: string;
+  year: string;
+  medium: string;
   // Purchase info
-  purchasePrice: string
-  purchaseYear: string
-  invoiceAvailable: "yes" | "no" | ""
-  invoiceFile?: File
+  purchasePrice: string;
+  purchaseYear: string;
+  invoiceAvailable: "yes" | "no" | "";
+  invoiceFile?: File;
   // Additional notes
-  provenance: string
-  condition: string
-  additionalNotes: string
+  provenance: string;
+  condition: string;
+  additionalNotes: string;
 }
 
 export default function NewArtworkPage() {
-  const router = useRouter()
-  const { isAuthenticated, hasRole, isLoading } = useAuth()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [imagePreviews, setImagePreviews] = useState<string[]>([])
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const router = useRouter();
+  const { isAuthenticated, hasRole, isLoading } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<ArtworkFormData>({
     images: [],
@@ -78,105 +99,111 @@ export default function NewArtworkPage() {
     provenance: "",
     condition: "",
     additionalNotes: "",
-  })
+  });
 
-  // Redirect if not authenticated or doesn't have seller role
-  if (!isLoading && (!isAuthenticated || !hasRole("collector_seller"))) {
-    router.push("/login")
-    return null
-  }
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
+    const files = e.target.files;
+    if (!files) return;
 
-    const newFiles = Array.from(files)
-    const totalImages = formData.images.length + newFiles.length
+    const newFiles = Array.from(files);
+    const totalImages = formData.images.length + newFiles.length;
 
     if (totalImages > 10) {
-      setErrors({ ...errors, images: "Maximum 10 images allowed" })
-      return
+      setErrors({ ...errors, images: "Maximum 10 images allowed" });
+      return;
     }
 
     // Validate file size (10MB max per file)
-    const invalidFiles = newFiles.filter((file) => file.size > 10 * 1024 * 1024)
+    const invalidFiles = newFiles.filter(
+      (file) => file.size > 10 * 1024 * 1024,
+    );
     if (invalidFiles.length > 0) {
-      setErrors({ ...errors, images: "Each image must be less than 10MB" })
-      return
+      setErrors({ ...errors, images: "Each image must be less than 10MB" });
+      return;
     }
 
     // Create previews
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
-    setImagePreviews([...imagePreviews, ...newPreviews])
-    setFormData({ ...formData, images: [...formData.images, ...newFiles] })
-    setErrors({ ...errors, images: "" })
-  }
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviews([...imagePreviews, ...newPreviews]);
+    setFormData({ ...formData, images: [...formData.images, ...newFiles] });
+    setErrors({ ...errors, images: "" });
+  };
 
   const removeImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index)
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    URL.revokeObjectURL(imagePreviews[index])
-    setImagePreviews(newPreviews)
-    setFormData({ ...formData, images: newImages })
-  }
+    const newImages = formData.images.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    URL.revokeObjectURL(imagePreviews[index]);
+    setImagePreviews(newPreviews);
+    setFormData({ ...formData, images: newImages });
+  };
 
   const handleInvoiceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        setErrors({ ...errors, invoice: "File must be less than 10MB" })
-        return
+        setErrors({ ...errors, invoice: "File must be less than 10MB" });
+        return;
       }
-      setFormData({ ...formData, invoiceFile: file })
-      setErrors({ ...errors, invoice: "" })
+      setFormData({ ...formData, invoiceFile: file });
+      setErrors({ ...errors, invoice: "" });
     }
-  }
+  };
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {}
+    const newErrors: Record<string, string> = {};
 
     // Required fields
     if (formData.images.length === 0) {
-      newErrors.images = "At least one image is required"
+      newErrors.images = "At least one image is required";
     }
     if (!formData.title.trim()) {
-      newErrors.title = "Title is required"
+      newErrors.title = "Title is required";
     }
     if (!formData.artist.trim()) {
-      newErrors.artist = "Artist name is required"
+      newErrors.artist = "Artist name is required";
     }
     if (!formData.height || Number.parseFloat(formData.height) <= 0) {
-      newErrors.height = "Valid height is required"
+      newErrors.height = "Valid height is required";
     }
     if (!formData.width || Number.parseFloat(formData.width) <= 0) {
-      newErrors.width = "Valid width is required"
+      newErrors.width = "Valid width is required";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
       // Scroll to first error
-      const firstError = document.querySelector('[data-error="true"]')
-      firstError?.scrollIntoView({ behavior: "smooth", block: "center" })
-      return
+      const firstError = document.querySelector('[data-error="true"]');
+      firstError?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     try {
       // In production, you would upload images to storage first
       // For now, we'll use a placeholder image URL
-      const imageUrl = formData.images.length > 0 ? "/abstract-colorful-artwork.png" : "/placeholder.svg"
+      const imageUrl =
+        formData.images.length > 0
+          ? "/abstract-colorful-artwork.png"
+          : "/placeholder.svg";
 
-      artworkStorage.add({
+      const result = await artworkStorage.add({
         title: formData.title,
         artist: formData.artist,
         year: formData.year,
@@ -197,25 +224,29 @@ export default function NewArtworkPage() {
         editionSize: formData.editionSize,
         depth: formData.depth,
         additionalNotes: formData.additionalNotes,
-      })
+      });
 
-      console.log("[v0] Artwork successfully saved to localStorage")
+      if (!result) {
+        throw new Error("Failed to save artwork");
+      }
+
+      console.log("[v0] Artwork successfully saved to Supabase:", result.id);
     } catch (error) {
-      console.error("[v0] Error saving artwork:", error)
-      setIsSubmitting(false)
-      return
+      console.error("[v0] Error saving artwork:", error);
+      setIsSubmitting(false);
+      return;
     }
 
     // Redirect to collection page
-    router.push("/my-collection")
-  }
+    router.push("/my-collection");
+  };
 
   const updateField = (field: keyof ArtworkFormData, value: any) => {
-    setFormData({ ...formData, [field]: value })
+    setFormData({ ...formData, [field]: value });
     if (errors[field]) {
-      setErrors({ ...errors, [field]: "" })
+      setErrors({ ...errors, [field]: "" });
     }
-  }
+  };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-muted/30">
@@ -230,7 +261,8 @@ export default function NewArtworkPage() {
           </Button>
           <h1 className="text-3xl font-bold">Add New Artwork</h1>
           <p className="text-muted-foreground mt-1">
-            Register an artwork from your collection for portfolio management and potential sale
+            Register an artwork from your collection for portfolio management
+            and potential sale
           </p>
         </div>
 
@@ -244,7 +276,8 @@ export default function NewArtworkPage() {
                 <Badge variant="secondary">Required</Badge>
               </CardTitle>
               <CardDescription>
-                Upload high-quality images of your artwork. First image will be the primary.
+                Upload high-quality images of your artwork. First image will be
+                the primary.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -268,8 +301,12 @@ export default function NewArtworkPage() {
                       className="hidden"
                     />
                     <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="font-medium mb-1">Click to upload or drag and drop</p>
-                    <p className="text-sm text-muted-foreground">PNG, JPG up to 10MB each (max 10 images)</p>
+                    <p className="font-medium mb-1">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      PNG, JPG up to 10MB each (max 10 images)
+                    </p>
                   </label>
                   {errors.images && (
                     <p className="text-sm text-red-600 flex items-center gap-1 mt-2">
@@ -294,7 +331,11 @@ export default function NewArtworkPage() {
                           alt={`Preview ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
-                        {index === 0 && <Badge className="absolute top-2 left-2 bg-primary">Primary</Badge>}
+                        {index === 0 && (
+                          <Badge className="absolute top-2 left-2 bg-primary">
+                            Primary
+                          </Badge>
+                        )}
                         <button
                           type="button"
                           onClick={() => removeImage(index)}
@@ -314,7 +355,9 @@ export default function NewArtworkPage() {
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Artwork Details</CardTitle>
-              <CardDescription>Provide accurate information about the artwork</CardDescription>
+              <CardDescription>
+                Provide accurate information about the artwork
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Title & Artist */}
@@ -381,7 +424,9 @@ export default function NewArtworkPage() {
                       />
                       <Select
                         value={formData.heightUnit}
-                        onValueChange={(value: "cm" | "in") => updateField("heightUnit", value)}
+                        onValueChange={(value: "cm" | "in") =>
+                          updateField("heightUnit", value)
+                        }
                       >
                         <SelectTrigger className="w-20">
                           <SelectValue />
@@ -415,7 +460,9 @@ export default function NewArtworkPage() {
                       />
                       <Select
                         value={formData.widthUnit}
-                        onValueChange={(value: "cm" | "in") => updateField("widthUnit", value)}
+                        onValueChange={(value: "cm" | "in") =>
+                          updateField("widthUnit", value)
+                        }
                       >
                         <SelectTrigger className="w-20">
                           <SelectValue />
@@ -449,7 +496,9 @@ export default function NewArtworkPage() {
                       />
                       <Select
                         value={formData.depthUnit}
-                        onValueChange={(value: "cm" | "in") => updateField("depthUnit", value)}
+                        onValueChange={(value: "cm" | "in") =>
+                          updateField("depthUnit", value)
+                        }
                       >
                         <SelectTrigger className="w-20">
                           <SelectValue />
@@ -468,20 +517,30 @@ export default function NewArtworkPage() {
 
               {/* Signed? */}
               <div className="space-y-3">
-                <Label className="text-base font-semibold">Is the artwork signed?</Label>
+                <Label className="text-base font-semibold">
+                  Is the artwork signed?
+                </Label>
                 <RadioGroup
                   value={formData.signed}
-                  onValueChange={(value: "yes" | "no") => updateField("signed", value)}
+                  onValueChange={(value: "yes" | "no") =>
+                    updateField("signed", value)
+                  }
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="signed-yes" />
-                    <Label htmlFor="signed-yes" className="font-normal cursor-pointer">
+                    <Label
+                      htmlFor="signed-yes"
+                      className="font-normal cursor-pointer"
+                    >
                       Yes
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="no" id="signed-no" />
-                    <Label htmlFor="signed-no" className="font-normal cursor-pointer">
+                    <Label
+                      htmlFor="signed-no"
+                      className="font-normal cursor-pointer"
+                    >
                       No
                     </Label>
                   </div>
@@ -492,20 +551,30 @@ export default function NewArtworkPage() {
 
               {/* Edition? */}
               <div className="space-y-3">
-                <Label className="text-base font-semibold">Is this an edition?</Label>
+                <Label className="text-base font-semibold">
+                  Is this an edition?
+                </Label>
                 <RadioGroup
                   value={formData.edition}
-                  onValueChange={(value: "yes" | "no") => updateField("edition", value)}
+                  onValueChange={(value: "yes" | "no") =>
+                    updateField("edition", value)
+                  }
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="edition-yes" />
-                    <Label htmlFor="edition-yes" className="font-normal cursor-pointer">
+                    <Label
+                      htmlFor="edition-yes"
+                      className="font-normal cursor-pointer"
+                    >
                       Yes
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="no" id="edition-no" />
-                    <Label htmlFor="edition-no" className="font-normal cursor-pointer">
+                    <Label
+                      htmlFor="edition-no"
+                      className="font-normal cursor-pointer"
+                    >
                       No
                     </Label>
                   </div>
@@ -524,9 +593,13 @@ export default function NewArtworkPage() {
                         id="editionNumber"
                         placeholder="e.g., 3"
                         value={formData.editionNumber}
-                        onChange={(e) => updateField("editionNumber", e.target.value)}
+                        onChange={(e) =>
+                          updateField("editionNumber", e.target.value)
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">Your copy number in the edition</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your copy number in the edition
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="editionSize">Edition Size</Label>
@@ -534,9 +607,13 @@ export default function NewArtworkPage() {
                         id="editionSize"
                         placeholder="e.g., 15"
                         value={formData.editionSize}
-                        onChange={(e) => updateField("editionSize", e.target.value)}
+                        onChange={(e) =>
+                          updateField("editionSize", e.target.value)
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">Total copies in the edition</p>
+                      <p className="text-xs text-muted-foreground">
+                        Total copies in the edition
+                      </p>
                     </div>
                   </motion.div>
                 )}
@@ -564,7 +641,9 @@ export default function NewArtworkPage() {
                     value={formData.medium}
                     onChange={(e) => updateField("medium", e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">e.g., "Acrylic on wood panel", "C-print photography"</p>
+                  <p className="text-xs text-muted-foreground">
+                    e.g., "Acrylic on wood panel", "C-print photography"
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -574,7 +653,9 @@ export default function NewArtworkPage() {
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Purchase Information</CardTitle>
-              <CardDescription>Optional - Used to calculate estimated gains/losses</CardDescription>
+              <CardDescription>
+                Optional - Used to calculate estimated gains/losses
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Purchase Price & Year */}
@@ -582,14 +663,18 @@ export default function NewArtworkPage() {
                 <div className="space-y-2">
                   <Label htmlFor="purchasePrice">Purchase Price</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
                     <Input
                       id="purchasePrice"
                       type="number"
                       placeholder="0"
                       className="pl-7"
                       value={formData.purchasePrice}
-                      onChange={(e) => updateField("purchasePrice", e.target.value)}
+                      onChange={(e) =>
+                        updateField("purchasePrice", e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -600,7 +685,9 @@ export default function NewArtworkPage() {
                     id="purchaseYear"
                     placeholder="e.g., 2022"
                     value={formData.purchaseYear}
-                    onChange={(e) => updateField("purchaseYear", e.target.value)}
+                    onChange={(e) =>
+                      updateField("purchaseYear", e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -609,20 +696,30 @@ export default function NewArtworkPage() {
 
               {/* Invoice Available? */}
               <div className="space-y-3">
-                <Label className="text-base font-semibold">Do you have a purchase invoice?</Label>
+                <Label className="text-base font-semibold">
+                  Do you have a purchase invoice?
+                </Label>
                 <RadioGroup
                   value={formData.invoiceAvailable}
-                  onValueChange={(value: "yes" | "no") => updateField("invoiceAvailable", value)}
+                  onValueChange={(value: "yes" | "no") =>
+                    updateField("invoiceAvailable", value)
+                  }
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id="invoice-yes" />
-                    <Label htmlFor="invoice-yes" className="font-normal cursor-pointer">
+                    <Label
+                      htmlFor="invoice-yes"
+                      className="font-normal cursor-pointer"
+                    >
                       Yes
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="no" id="invoice-no" />
-                    <Label htmlFor="invoice-no" className="font-normal cursor-pointer">
+                    <Label
+                      htmlFor="invoice-no"
+                      className="font-normal cursor-pointer"
+                    >
                       No
                     </Label>
                   </div>
@@ -646,7 +743,9 @@ export default function NewArtworkPage() {
                         />
                         <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                         <p className="text-sm font-medium">Upload Invoice</p>
-                        <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG up to 10MB</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PDF, JPG, PNG up to 10MB
+                        </p>
                         {formData.invoiceFile && (
                           <div className="mt-2 flex items-center justify-center gap-2 text-sm text-green-600">
                             <CheckCircle2 className="h-4 w-4" />
@@ -671,7 +770,10 @@ export default function NewArtworkPage() {
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>Additional Notes</CardTitle>
-              <CardDescription>Optional information about provenance, condition, and other details</CardDescription>
+              <CardDescription>
+                Optional information about provenance, condition, and other
+                details
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -702,7 +804,9 @@ export default function NewArtworkPage() {
                   id="additionalNotes"
                   placeholder="Any other relevant details about the artwork..."
                   value={formData.additionalNotes}
-                  onChange={(e) => updateField("additionalNotes", e.target.value)}
+                  onChange={(e) =>
+                    updateField("additionalNotes", e.target.value)
+                  }
                   rows={3}
                 />
               </div>
@@ -711,7 +815,13 @@ export default function NewArtworkPage() {
 
           {/* Form Actions */}
           <div className="flex flex-col sm:flex-row gap-3 justify-end">
-            <Button type="button" variant="outline" size="lg" onClick={() => router.back()} disabled={isSubmitting}>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button type="submit" size="lg" disabled={isSubmitting}>
@@ -731,5 +841,5 @@ export default function NewArtworkPage() {
         </form>
       </div>
     </div>
-  )
+  );
 }

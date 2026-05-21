@@ -20,11 +20,14 @@ export default function PaymentPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const found = artworkStorage.getById(artworkId)
-    if (found) {
-      setArtwork(found)
+    const fetchArtwork = async () => {
+      const found = await artworkStorage.getById(artworkId)
+      if (found) {
+        setArtwork(found)
+      }
+      setIsLoading(false)
     }
-    setIsLoading(false)
+    fetchArtwork()
   }, [artworkId])
 
   if (isLoading) {
