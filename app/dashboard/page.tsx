@@ -147,8 +147,7 @@ export default function DashboardPage() {
     if (!isLoading && !isAuthenticated) {
       router.push("/login")
     } else if (isAuthenticated) {
-      const fetchArtworks = async () => {
-        const artworks = await artworkStorage.getAll()
+      const artworks = artworkStorage.getAll()
 
       // Transform artworks into holdings with mock current values and signals
       const transformedHoldings: Holding[] = artworks
@@ -191,8 +190,6 @@ export default function DashboardPage() {
       setHoldings(transformedHoldings)
       sellOpportunities = transformedHoldings.filter((h) => h.signal === "sell") // Update global sellOpportunities
       setCurrentValue(transformedHoldings.reduce((sum, h) => sum + h.currentValue, 0)) // Set currentValue state
-      }
-      fetchArtworks()
     }
   }, [isLoading, isAuthenticated, router])
 

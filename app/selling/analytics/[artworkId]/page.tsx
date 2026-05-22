@@ -68,15 +68,12 @@ export default function ArtworkAnalyticsPage() {
     } else if (isAuthenticated && !hasRole("collector_seller")) {
       router.push("/selling")
     } else if (isAuthenticated && artworkId) {
-      const fetchArtwork = async () => {
-        const foundArtwork = await artworkStorage.getById(artworkId)
-        if (!foundArtwork) {
-          router.push("/selling/analytics")
-        } else {
-          setArtwork(foundArtwork)
-        }
+      const foundArtwork = artworkStorage.getById(artworkId)
+      if (!foundArtwork) {
+        router.push("/selling/analytics")
+      } else {
+        setArtwork(foundArtwork)
       }
-      fetchArtwork()
     }
   }, [isLoading, isAuthenticated, hasRole, artworkId, router])
 

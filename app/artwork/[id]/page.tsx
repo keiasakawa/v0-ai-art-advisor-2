@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   Heart,
   Share2,
@@ -16,59 +16,59 @@ import {
   Facebook,
   Link2,
   ChevronRight,
-} from "lucide-react";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { useState } from "react";
-import { useParams } from "next/navigation";
+} from "lucide-react"
+import Link from "next/link"
+import { motion } from "framer-motion"
+import { useState } from "react"
+import { useParams } from "next/navigation"
 
-import { EstimatedMarketValue } from "@/components/estimated-market-value";
-import { PriceHistory } from "@/components/price-history";
+import { EstimatedMarketValue } from "@/components/estimated-market-value"
+import { PriceHistory } from "@/components/price-history"
 
 // Artwork database (would come from backend/API)
 const artworksData: Record<
   string,
   {
-    id: number;
-    title: string;
-    artist: string;
-    artistBio: string;
-    artistNationality: string;
-    artistBorn: string;
-    artistImage: string;
-    price: number;
-    image: string;
-    additionalImages: string[];
-    category: string;
-    size: string;
-    medium: string;
-    year: number;
-    rarity: string;
-    signature: string;
-    certificate: boolean;
-    frame: string;
-    description: string;
-    galleryName: string;
-    shippingInfo: string;
+    id: number
+    title: string
+    artist: string
+    artistBio: string
+    artistNationality: string
+    artistBorn: string
+    artistImage: string
+    price: number
+    image: string
+    additionalImages: string[]
+    category: string
+    size: string
+    medium: string
+    year: number
+    rarity: string
+    signature: string
+    certificate: boolean
+    frame: string
+    description: string
+    galleryName: string
+    shippingInfo: string
     marketValue: {
-      estimated: number;
-      low: number;
-      high: number;
-      lastSalePrice?: number;
-      lastSaleDate?: string;
-      priceChange?: number;
-      pricePerSquareInch?: number;
-    };
+      estimated: number
+      low: number
+      high: number
+      lastSalePrice?: number
+      lastSaleDate?: string
+      priceChange?: number
+      pricePerSquareInch?: number
+    }
     priceHistory: {
-      date: string;
-      event: string;
-      price: number;
-      changePercent?: number;
-      pricePerUnit?: number;
-      unitLabel?: string;
-      source?: string;
-      sourceUrl?: string;
-    }[];
+      date: string
+      event: string
+      price: number
+      changePercent?: number
+      pricePerUnit?: number
+      unitLabel?: string
+      source?: string
+      sourceUrl?: string
+    }[]
   }
 > = {
   "1": {
@@ -105,14 +105,7 @@ const artworksData: Record<
       pricePerSquareInch: 2.6,
     },
     priceHistory: [
-      {
-        date: "Nov 2024",
-        event: "Listed",
-        price: 4200,
-        pricePerUnit: 2.43,
-        unitLabel: "sq in",
-        source: "OFFA",
-      },
+      { date: "Nov 2024", event: "Listed", price: 4200, pricePerUnit: 2.43, unitLabel: "sq in", source: "OFFA" },
       {
         date: "Mar 2022",
         event: "Sold",
@@ -133,14 +126,7 @@ const artworksData: Record<
         source: "Sotheby's",
         sourceUrl: "#",
       },
-      {
-        date: "Jun 2019",
-        event: "Sold",
-        price: 1500,
-        pricePerUnit: 0.87,
-        unitLabel: "sq in",
-        source: "Gallery Sale",
-      },
+      { date: "Jun 2019", event: "Sold", price: 1500, pricePerUnit: 0.87, unitLabel: "sq in", source: "Gallery Sale" },
     ],
   },
   "2": {
@@ -177,14 +163,7 @@ const artworksData: Record<
       pricePerSquareInch: 3.42,
     },
     priceHistory: [
-      {
-        date: "Dec 2024",
-        event: "Listed",
-        price: 3800,
-        pricePerUnit: 3.17,
-        unitLabel: "sq in",
-        source: "OFFA",
-      },
+      { date: "Dec 2024", event: "Listed", price: 3800, pricePerUnit: 3.17, unitLabel: "sq in", source: "OFFA" },
       {
         date: "Jan 2023",
         event: "Sold",
@@ -205,14 +184,7 @@ const artworksData: Record<
         source: "Bonhams",
         sourceUrl: "#",
       },
-      {
-        date: "Oct 2019",
-        event: "Sold",
-        price: 1400,
-        pricePerUnit: 1.17,
-        unitLabel: "sq in",
-        source: "Gallery Sale",
-      },
+      { date: "Oct 2019", event: "Sold", price: 1400, pricePerUnit: 1.17, unitLabel: "sq in", source: "Gallery Sale" },
     ],
   },
   "3": {
@@ -249,14 +221,7 @@ const artworksData: Record<
       pricePerSquareInch: 5.56,
     },
     priceHistory: [
-      {
-        date: "Nov 2024",
-        event: "Listed",
-        price: 2900,
-        pricePerUnit: 5.03,
-        unitLabel: "sq in",
-        source: "OFFA",
-      },
+      { date: "Nov 2024", event: "Listed", price: 2900, pricePerUnit: 5.03, unitLabel: "sq in", source: "OFFA" },
       {
         date: "Aug 2023",
         event: "Sold",
@@ -267,14 +232,7 @@ const artworksData: Record<
         source: "Art Basel",
         sourceUrl: "#",
       },
-      {
-        date: "Feb 2022",
-        event: "Sold",
-        price: 1400,
-        pricePerUnit: 2.43,
-        unitLabel: "sq in",
-        source: "Tokyo Gallery",
-      },
+      { date: "Feb 2022", event: "Sold", price: 1400, pricePerUnit: 2.43, unitLabel: "sq in", source: "Tokyo Gallery" },
     ],
   },
   "4": {
@@ -311,14 +269,7 @@ const artworksData: Record<
       pricePerSquareInch: 3.59,
     },
     priceHistory: [
-      {
-        date: "Oct 2024",
-        event: "Listed",
-        price: 5500,
-        pricePerUnit: 3.18,
-        unitLabel: "sq in",
-        source: "OFFA",
-      },
+      { date: "Oct 2024", event: "Listed", price: 5500, pricePerUnit: 3.18, unitLabel: "sq in", source: "OFFA" },
       {
         date: "Apr 2020",
         event: "Auction",
@@ -338,14 +289,7 @@ const artworksData: Record<
         unitLabel: "sq in",
         source: "Galerie Moderne",
       },
-      {
-        date: "Mar 2017",
-        event: "Sold",
-        price: 900,
-        pricePerUnit: 0.52,
-        unitLabel: "sq in",
-        source: "Studio Sale",
-      },
+      { date: "Mar 2017", event: "Sold", price: 900, pricePerUnit: 0.52, unitLabel: "sq in", source: "Studio Sale" },
       {
         date: "Sep 2015",
         event: "Listed",
@@ -390,14 +334,7 @@ const artworksData: Record<
       pricePerSquareInch: 3.0,
     },
     priceHistory: [
-      {
-        date: "Dec 2024",
-        event: "Listed",
-        price: 3200,
-        pricePerUnit: 2.67,
-        unitLabel: "sq in",
-        source: "OFFA",
-      },
+      { date: "Dec 2024", event: "Listed", price: 3200, pricePerUnit: 2.67, unitLabel: "sq in", source: "OFFA" },
       {
         date: "Jun 2023",
         event: "Sold",
@@ -408,14 +345,7 @@ const artworksData: Record<
         source: "Frieze London",
         sourceUrl: "#",
       },
-      {
-        date: "Jan 2022",
-        event: "Sold",
-        price: 1800,
-        pricePerUnit: 1.5,
-        unitLabel: "sq in",
-        source: "Stellar Arts",
-      },
+      { date: "Jan 2022", event: "Sold", price: 1800, pricePerUnit: 1.5, unitLabel: "sq in", source: "Stellar Arts" },
     ],
   },
   "6": {
@@ -452,14 +382,7 @@ const artworksData: Record<
       pricePerSquareInch: 4.02,
     },
     priceHistory: [
-      {
-        date: "Nov 2024",
-        event: "Listed",
-        price: 4800,
-        pricePerUnit: 3.57,
-        unitLabel: "sq in",
-        source: "OFFA",
-      },
+      { date: "Nov 2024", event: "Listed", price: 4800, pricePerUnit: 3.57, unitLabel: "sq in", source: "OFFA" },
       {
         date: "Feb 2019",
         event: "Auction",
@@ -479,35 +402,28 @@ const artworksData: Record<
         unitLabel: "sq in",
         source: "Northern Light Gallery",
       },
-      {
-        date: "Mar 2014",
-        event: "Sold",
-        price: 700,
-        pricePerUnit: 0.52,
-        unitLabel: "sq in",
-        source: "Studio Sale",
-      },
+      { date: "Mar 2014", event: "Sold", price: 700, pricePerUnit: 0.52, unitLabel: "sq in", source: "Studio Sale" },
     ],
   },
-};
+}
 
 const getRelatedArtworks = (currentId: string) => {
   return Object.values(artworksData)
     .filter((art) => art.id.toString() !== currentId)
-    .slice(0, 4);
-};
+    .slice(0, 4)
+}
 
 export default function ArtworkPage() {
-  const params = useParams();
-  const id = params.id as string;
-  const artwork = artworksData[id] || artworksData["1"];
-  const [isLiked, setIsLiked] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [showShipping, setShowShipping] = useState(false);
-  const [showShareMenu, setShowShareMenu] = useState(false);
-  const [alertCreated, setAlertCreated] = useState(false);
+  const params = useParams()
+  const id = params.id as string
+  const artwork = artworksData[id] || artworksData["1"]
+  const [isLiked, setIsLiked] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(0)
+  const [showShipping, setShowShipping] = useState(false)
+  const [showShareMenu, setShowShareMenu] = useState(false)
+  const [alertCreated, setAlertCreated] = useState(false)
 
-  const relatedArtworks = getRelatedArtworks(id);
+  const relatedArtworks = getRelatedArtworks(id)
 
   return (
     <div className="min-h-screen bg-background">
@@ -549,9 +465,7 @@ export default function ArtworkPage() {
               <button
                 onClick={() => setIsLiked(!isLiked)}
                 className={`flex items-center gap-2 text-sm transition-colors ${
-                  isLiked
-                    ? "text-red-500"
-                    : "text-muted-foreground hover:text-foreground"
+                  isLiked ? "text-red-500" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Heart className={`h-5 w-5 ${isLiked ? "fill-red-500" : ""}`} />
@@ -595,10 +509,7 @@ export default function ArtworkPage() {
           >
             {/* Artist and Title */}
             <div>
-              <Link
-                href="#"
-                className="text-2xl font-semibold hover:underline underline-offset-4"
-              >
+              <Link href="#" className="text-2xl font-semibold hover:underline underline-offset-4">
                 {artwork.artist}
               </Link>
               <p className="text-xl text-muted-foreground italic">
@@ -620,9 +531,7 @@ export default function ArtworkPage() {
               {artwork.certificate && (
                 <div className="inline-flex items-center gap-1.5 text-sm">
                   <Check className="h-4 w-4 text-green-600" />
-                  <span className="underline underline-offset-2">
-                    Certificate of Authenticity
-                  </span>
+                  <span className="underline underline-offset-2">Certificate of Authenticity</span>
                 </div>
               )}
               {artwork.signature && (
@@ -633,30 +542,23 @@ export default function ArtworkPage() {
             </div>
 
             {/* Price */}
-            <div className="text-2xl font-semibold">
-              US${artwork.price.toLocaleString()}
-            </div>
+            <div className="text-2xl font-semibold">US${artwork.price.toLocaleString()}</div>
 
             {/* Purchase / Contact Controls */}
             <div className="space-y-3">
               <Button size="lg" className="w-full" asChild>
-                <Link href={`/payment/${artwork.id}`}>Purchase</Link>
+                <Link href={`/payment/${artwork.id}`}>
+                  Purchase
+                </Link>
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full bg-transparent"
-              >
+              <Button size="lg" variant="outline" className="w-full bg-transparent">
                 Make an Offer
               </Button>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
               <Lock className="h-4 w-4 flex-shrink-0" />
-              <span>
-                Buyer Protection Guarantee. Secure checkout with encrypted
-                payment processing.
-              </span>
+              <span>Buyer Protection Guarantee. Secure checkout with encrypted payment processing.</span>
             </div>
 
             {/* Shipping & Taxes */}
@@ -669,9 +571,7 @@ export default function ArtworkPage() {
                   <Truck className="h-4 w-4" />
                   Shipping and taxes
                 </span>
-                <ChevronLeft
-                  className={`h-4 w-4 transition-transform ${showShipping ? "rotate-90" : "-rotate-90"}`}
-                />
+                <ChevronLeft className={`h-4 w-4 transition-transform ${showShipping ? "rotate-90" : "-rotate-90"}`} />
               </button>
               {showShipping && (
                 <motion.div
@@ -692,15 +592,10 @@ export default function ArtworkPage() {
             {/* Gallery / Seller Information */}
             <div className="flex items-center justify-between border-t pt-4">
               <div className="text-sm">
-                <Link
-                  href="#"
-                  className="font-medium hover:underline underline-offset-2"
-                >
+                <Link href="#" className="font-medium hover:underline underline-offset-2">
                   {artwork.galleryName}
                 </Link>
-                <p className="text-muted-foreground">
-                  {artwork.shippingInfo.replace("Ships from ", "")}
-                </p>
+                <p className="text-muted-foreground">{artwork.shippingInfo.replace("Ships from ", "")}</p>
               </div>
               <Button variant="outline" size="sm">
                 Contact Gallery
@@ -709,18 +604,14 @@ export default function ArtworkPage() {
 
             {/* Social / Sharing / Save / Alert Features */}
             <div className="flex items-center justify-between border-t pt-4">
-              <span className="text-sm text-muted-foreground">
-                Get notified about similar works
-              </span>
+              <span className="text-sm text-muted-foreground">Get notified about similar works</span>
               <Button
                 variant="outline"
                 size="sm"
                 className={`gap-2 ${alertCreated ? "bg-green-50 border-green-200 text-green-700" : ""}`}
                 onClick={() => setAlertCreated(!alertCreated)}
               >
-                <Bell
-                  className={`h-4 w-4 ${alertCreated ? "fill-green-600" : ""}`}
-                />
+                <Bell className={`h-4 w-4 ${alertCreated ? "fill-green-600" : ""}`} />
                 {alertCreated ? "Alert Created" : "Create Alert"}
               </Button>
             </div>
@@ -737,10 +628,7 @@ export default function ArtworkPage() {
             priceChange={artwork.marketValue.priceChange}
             pricePerSquareInch={artwork.marketValue.pricePerSquareInch}
           />
-          <PriceHistory
-            entries={artwork.priceHistory}
-            initialVisibleCount={3}
-          />
+          <PriceHistory entries={artwork.priceHistory} initialVisibleCount={3} />
         </div>
 
         {/* Description / About the Work */}
@@ -750,16 +638,12 @@ export default function ArtworkPage() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-16 border-t pt-8"
         >
-          <h2 className="text-lg font-semibold border-b pb-4 mb-6">
-            About the Work
-          </h2>
+          <h2 className="text-lg font-semibold border-b pb-4 mb-6">About the Work</h2>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             {/* Description and Details */}
             <div className="space-y-6">
-              <p className="text-muted-foreground leading-relaxed">
-                {artwork.description}
-              </p>
+              <p className="text-muted-foreground leading-relaxed">{artwork.description}</p>
 
               <div className="space-y-0 text-sm">
                 <div className="grid grid-cols-[140px_1fr] gap-4 py-3 border-b">
@@ -786,11 +670,7 @@ export default function ArtworkPage() {
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-4 py-3 border-b">
                   <span className="text-muted-foreground">Certificate</span>
-                  <span>
-                    {artwork.certificate
-                      ? "Included (issued by gallery)"
-                      : "Not included"}
-                  </span>
+                  <span>{artwork.certificate ? "Included (issued by gallery)" : "Not included"}</span>
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-4 py-3 border-b">
                   <span className="text-muted-foreground">Frame</span>
@@ -798,9 +678,7 @@ export default function ArtworkPage() {
                 </div>
                 <div className="grid grid-cols-[140px_1fr] gap-4 py-3 border-b">
                   <span className="text-muted-foreground">Provenance</span>
-                  <span>
-                    Directly from the artist via {artwork.galleryName}
-                  </span>
+                  <span>Directly from the artist via {artwork.galleryName}</span>
                 </div>
               </div>
             </div>
@@ -817,10 +695,7 @@ export default function ArtworkPage() {
                 />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <Link
-                      href="#"
-                      className="font-semibold hover:underline underline-offset-2"
-                    >
+                    <Link href="#" className="font-semibold hover:underline underline-offset-2">
                       {artwork.artist}
                     </Link>
                     <Button variant="outline" size="sm">
@@ -833,16 +708,10 @@ export default function ArtworkPage() {
                 </div>
               </div>
 
-              <p className="text-muted-foreground leading-relaxed">
-                {artwork.artistBio}
-              </p>
+              <p className="text-muted-foreground leading-relaxed">{artwork.artistBio}</p>
 
               <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 bg-transparent"
-                >
+                <Button variant="outline" size="sm" className="gap-2 bg-transparent">
                   <MessageSquare className="h-4 w-4" />
                   Ask OFFA about this artist
                 </Button>
@@ -879,15 +748,9 @@ export default function ArtworkPage() {
                     loading="lazy"
                   />
                 </div>
-                <p className="font-medium group-hover:underline underline-offset-2">
-                  {art.artist}
-                </p>
-                <p className="text-sm text-muted-foreground italic truncate">
-                  {art.title}
-                </p>
-                <p className="text-sm font-medium mt-1">
-                  US${art.price.toLocaleString()}
-                </p>
+                <p className="font-medium group-hover:underline underline-offset-2">{art.artist}</p>
+                <p className="text-sm text-muted-foreground italic truncate">{art.title}</p>
+                <p className="text-sm font-medium mt-1">US${art.price.toLocaleString()}</p>
               </Link>
             ))}
           </div>
@@ -901,12 +764,9 @@ export default function ArtworkPage() {
           className="mt-16 rounded-xl border bg-muted/30 p-8 text-center"
         >
           <MessageSquare className="mx-auto h-8 w-8 text-primary mb-3" />
-          <h3 className="text-lg font-semibold">
-            Have questions about this artwork?
-          </h3>
+          <h3 className="text-lg font-semibold">Have questions about this artwork?</h3>
           <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-            Ask our AI Art Advisor for insights on style, investment potential,
-            or similar works
+            Ask our AI Art Advisor for insights on style, investment potential, or similar works
           </p>
           <Button asChild className="mt-4">
             <Link href="/chat">Chat with AI Advisor</Link>
@@ -914,5 +774,5 @@ export default function ArtworkPage() {
         </motion.div>
       </div>
     </div>
-  );
+  )
 }

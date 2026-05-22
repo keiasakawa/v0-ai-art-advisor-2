@@ -1,5 +1,3 @@
-import { createClient } from "@/lib/supabase/client"
-
 export interface Artwork {
   id: string
   title: string
@@ -17,7 +15,6 @@ export interface Artwork {
   imageUrl: string
   status: "draft" | "listed" | "sold"
   createdAt: string
-  userId?: string
   // Additional fields from form
   signed?: boolean
   edition?: boolean
@@ -28,249 +25,102 @@ export interface Artwork {
   additionalNotes?: string
 }
 
-// Database row type (snake_case from Supabase)
-interface ArtworkRow {
-  id: string
-  user_id: string
-  title: string
-  artist: string
-  year: string | null
-  medium: string | null
-  dimensions: string | null
-  purchase_price: number | null
-  purchase_year: string | null
-  desired_price: number | null
-  provenance: string | null
-  certificate: boolean
-  condition: string | null
-  description: string | null
-  image_url: string | null
-  status: "draft" | "listed" | "sold"
-  signed: boolean
-  edition: boolean
-  edition_number: string | null
-  edition_size: string | null
-  invoice_available: boolean
-  depth: string | null
-  additional_notes: string | null
-  created_at: string
-  updated_at: string
-}
+const STORAGE_KEY = "offcanvas_artworks"
 
-// Convert database row to Artwork type
-function rowToArtwork(row: ArtworkRow): Artwork {
-  return {
-    id: row.id,
-    title: row.title,
-    artist: row.artist,
-    year: row.year || "",
-    medium: row.medium || "",
-    dimensions: row.dimensions || "",
-    purchasePrice: row.purchase_price?.toString() || "",
-    purchaseYear: row.purchase_year || "",
-    desiredPrice: row.desired_price?.toString() || "",
-    provenance: row.provenance || "",
-    certificate: row.certificate,
-    condition: row.condition || "",
-    description: row.description || "",
-    imageUrl: row.image_url || "/placeholder.svg",
-    status: row.status,
-    createdAt: row.created_at,
-    userId: row.user_id,
-    signed: row.signed,
-    edition: row.edition,
-    editionNumber: row.edition_number || "",
-    editionSize: row.edition_size || "",
-    invoiceAvailable: row.invoice_available,
-    depth: row.depth || "",
-    additionalNotes: row.additional_notes || "",
-  }
-}
-
-// Convert Artwork to database row format
-function artworkToRow(artwork: Omit<Artwork, "id" | "createdAt">, userId: string): Omit<ArtworkRow, "id" | "created_at" | "updated_at"> {
-  return {
-    user_id: userId,
-    title: artwork.title,
-    artist: artwork.artist,
-    year: artwork.year || null,
-    medium: artwork.medium || null,
-    dimensions: artwork.dimensions || null,
-    purchase_price: artwork.purchasePrice ? parseFloat(artwork.purchasePrice) : null,
-    purchase_year: artwork.purchaseYear || null,
-    desired_price: artwork.desiredPrice ? parseFloat(artwork.desiredPrice) : null,
-    provenance: artwork.provenance || null,
-    certificate: artwork.certificate || false,
-    condition: artwork.condition || null,
-    description: artwork.description || null,
-    image_url: artwork.imageUrl || null,
-    status: artwork.status || "draft",
-    signed: artwork.signed || false,
-    edition: artwork.edition || false,
-    edition_number: artwork.editionNumber || null,
-    edition_size: artwork.editionSize || null,
-    invoice_available: artwork.invoiceAvailable || false,
-    depth: artwork.depth || null,
-    additional_notes: artwork.additionalNotes || null,
-  }
-}
+// Initialize with default data if empty
+const defaultArtworks: Artwork[] = [
+  {
+    id: "1",
+    title: "Abstract Horizon",
+    artist: "Self",
+    year: "2023",
+    medium: "Oil on Canvas",
+    dimensions: "48 × 36 in",
+    purchasePrice: "3500",
+    purchaseYear: "2022",
+    desiredPrice: "4500",
+    provenance: "Direct from artist",
+    certificate: true,
+    condition: "Excellent",
+    description: "A vibrant abstract piece exploring urban landscapes",
+    imageUrl: "/abstract-urban-painting.png",
+    status: "draft",
+    createdAt: new Date("2024-11-15").toISOString(),
+  },
+  {
+    id: "2",
+    title: "Urban Fragments",
+    artist: "James Lee",
+    year: "2021",
+    medium: "Mixed Media on Paper",
+    dimensions: "24 × 24 in",
+    purchasePrice: "2200",
+    purchaseYear: "2021",
+    desiredPrice: "3200",
+    provenance: "Purchased from Sotheby's auction",
+    certificate: true,
+    condition: "Very Good",
+    description: "Geometric abstraction with urban elements",
+    imageUrl: "/geometric-abstract.png",
+    status: "draft",
+    createdAt: new Date("2024-10-28").toISOString(),
+  },
+]
 
 export const artworkStorage = {
-  // Get all artworks for current user
-  getAll: async (): Promise<Artwork[]> => {
-    const supabase = createClient()
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return []
+  // Get all artworks
+  getAll: (): Artwork[] => {
+    if (typeof window === "undefined") return defaultArtworks
 
-    const { data, error } = await supabase
-      .from("artworks")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("[v0] Error fetching artworks:", error)
-      return []
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) {
+      // Initialize with default data
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultArtworks))
+      return defaultArtworks
     }
-
-    return (data as ArtworkRow[]).map(rowToArtwork)
-  },
-
-  // Get all listed artworks (public browse)
-  getAllListed: async (): Promise<Artwork[]> => {
-    const supabase = createClient()
-
-    const { data, error } = await supabase
-      .from("artworks")
-      .select("*")
-      .eq("status", "listed")
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("[v0] Error fetching listed artworks:", error)
-      return []
-    }
-
-    return (data as ArtworkRow[]).map(rowToArtwork)
+    return JSON.parse(stored)
   },
 
   // Get single artwork by ID
-  getById: async (id: string): Promise<Artwork | null> => {
-    const supabase = createClient()
-
-    const { data, error } = await supabase
-      .from("artworks")
-      .select("*")
-      .eq("id", id)
-      .single()
-
-    if (error) {
-      console.error("[v0] Error fetching artwork:", error)
-      return null
-    }
-
-    return rowToArtwork(data as ArtworkRow)
+  getById: (id: string): Artwork | undefined => {
+    const artworks = artworkStorage.getAll()
+    return artworks.find((artwork) => artwork.id === id)
   },
 
   // Add new artwork
-  add: async (artwork: Omit<Artwork, "id" | "createdAt">): Promise<Artwork | null> => {
-    const supabase = createClient()
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      console.error("[v0] User not authenticated")
-      return null
+  add: (artwork: Omit<Artwork, "id" | "createdAt">): Artwork => {
+    const newArtwork: Artwork = {
+      ...artwork,
+      id: `art_${Date.now()}`,
+      createdAt: new Date().toISOString(),
     }
 
-    const row = artworkToRow(artwork, user.id)
-
-    const { data, error } = await supabase
-      .from("artworks")
-      .insert(row)
-      .select()
-      .single()
-
-    if (error) {
-      console.error("[v0] Error adding artwork:", error)
-      return null
-    }
-
-    return rowToArtwork(data as ArtworkRow)
+    const artworks = artworkStorage.getAll()
+    const updated = [newArtwork, ...artworks]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    return newArtwork
   },
 
   // Update existing artwork
-  update: async (id: string, updates: Partial<Artwork>): Promise<Artwork | null> => {
-    const supabase = createClient()
+  update: (id: string, updates: Partial<Artwork>): Artwork | null => {
+    const artworks = artworkStorage.getAll()
+    const index = artworks.findIndex((a) => a.id === id)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      console.error("[v0] User not authenticated")
-      return null
-    }
+    if (index === -1) return null
 
-    // Convert updates to snake_case
-    const updateRow: Record<string, any> = {}
-    if (updates.title !== undefined) updateRow.title = updates.title
-    if (updates.artist !== undefined) updateRow.artist = updates.artist
-    if (updates.year !== undefined) updateRow.year = updates.year
-    if (updates.medium !== undefined) updateRow.medium = updates.medium
-    if (updates.dimensions !== undefined) updateRow.dimensions = updates.dimensions
-    if (updates.purchasePrice !== undefined) updateRow.purchase_price = updates.purchasePrice ? parseFloat(updates.purchasePrice) : null
-    if (updates.purchaseYear !== undefined) updateRow.purchase_year = updates.purchaseYear
-    if (updates.desiredPrice !== undefined) updateRow.desired_price = updates.desiredPrice ? parseFloat(updates.desiredPrice) : null
-    if (updates.provenance !== undefined) updateRow.provenance = updates.provenance
-    if (updates.certificate !== undefined) updateRow.certificate = updates.certificate
-    if (updates.condition !== undefined) updateRow.condition = updates.condition
-    if (updates.description !== undefined) updateRow.description = updates.description
-    if (updates.imageUrl !== undefined) updateRow.image_url = updates.imageUrl
-    if (updates.status !== undefined) updateRow.status = updates.status
-    if (updates.signed !== undefined) updateRow.signed = updates.signed
-    if (updates.edition !== undefined) updateRow.edition = updates.edition
-    if (updates.editionNumber !== undefined) updateRow.edition_number = updates.editionNumber
-    if (updates.editionSize !== undefined) updateRow.edition_size = updates.editionSize
-    if (updates.invoiceAvailable !== undefined) updateRow.invoice_available = updates.invoiceAvailable
-    if (updates.depth !== undefined) updateRow.depth = updates.depth
-    if (updates.additionalNotes !== undefined) updateRow.additional_notes = updates.additionalNotes
-    updateRow.updated_at = new Date().toISOString()
-
-    const { data, error } = await supabase
-      .from("artworks")
-      .update(updateRow)
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error("[v0] Error updating artwork:", error)
-      return null
-    }
-
-    return rowToArtwork(data as ArtworkRow)
+    artworks[index] = { ...artworks[index], ...updates }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(artworks))
+    return artworks[index]
   },
 
   // Delete artwork
-  delete: async (id: string): Promise<boolean> => {
-    const supabase = createClient()
+  delete: (id: string): boolean => {
+    const artworks = artworkStorage.getAll()
+    const filtered = artworks.filter((a) => a.id !== id)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      console.error("[v0] User not authenticated")
-      return false
-    }
+    if (filtered.length === artworks.length) return false
 
-    const { error } = await supabase
-      .from("artworks")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id)
-
-    if (error) {
-      console.error("[v0] Error deleting artwork:", error)
-      return false
-    }
-
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
     return true
   },
 }

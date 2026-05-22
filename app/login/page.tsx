@@ -1,69 +1,55 @@
-"use client";
+"use client"
 
-import type React from "react";
+import type React from "react"
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Sparkles, Mail, Lock, AlertCircle, ArrowRight } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Sparkles, Mail, Lock, AlertCircle, ArrowRight } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login, isLoading, needsRoleSelection, isAuthenticated } = useAuth();
+  const router = useRouter()
+  const { login, isLoading, needsRoleSelection } = useAuth()
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    // If user is already logged in, redirect to dashboard
-    if (isAuthenticated) {
-      router.push("/dashboard");
-    }
-  });
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault()
+    setError("")
 
-    const result = await login(email, password);
+    const result = await login(email, password)
 
     if (!result.success) {
-      setError(result.error || "Login failed");
-      return;
+      setError(result.error || "Login failed")
+      return
     }
 
     // Redirect based on role selection needs
     if (needsRoleSelection) {
-      router.push("/select-role");
+      router.push("/select-role")
     } else {
-      router.push("/dashboard");
+      router.push("/dashboard")
     }
-  };
+  }
 
   // Demo account buttons
   const loginAs = async (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword("password123");
-    const result = await login(demoEmail, "password123");
+    setEmail(demoEmail)
+    setPassword("password123")
+    const result = await login(demoEmail, "password123")
     if (result.success) {
-      router.push(needsRoleSelection ? "/select-role" : "/dashboard");
+      router.push(needsRoleSelection ? "/select-role" : "/dashboard")
     }
-  };
+  }
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-muted/30">
@@ -114,10 +100,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="#"
-                    className="text-xs text-muted-foreground hover:text-primary"
-                  >
+                  <Link href="#" className="text-xs text-muted-foreground hover:text-primary">
                     Forgot password?
                   </Link>
                 </div>
@@ -191,10 +174,7 @@ export default function LoginPage() {
           <CardFooter className="flex-col gap-4 text-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link
-                href="/signup"
-                className="font-medium text-primary hover:underline"
-              >
+              <Link href="/signup" className="font-medium text-primary hover:underline">
                 Sign up
               </Link>
             </p>
@@ -202,5 +182,5 @@ export default function LoginPage() {
         </Card>
       </motion.div>
     </div>
-  );
+  )
 }
