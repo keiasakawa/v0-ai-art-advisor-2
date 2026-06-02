@@ -41,13 +41,24 @@ export default function LoginPage() {
     }
   }
 
-  // Demo account buttons
-  const loginAs = async (demoEmail: string) => {
-    setEmail(demoEmail)
-    setPassword("password123")
-    const result = await login(demoEmail, "password123")
+  // Demo account buttons - these use real Supabase accounts
+  const demoAccounts = {
+    buyer: { email: "buyer@demo.offcanvas.art", password: "demobuyer123" },
+    seller: { email: "seller@demo.offcanvas.art", password: "demoseller123" },
+    curator: { email: "curator@demo.offcanvas.art", password: "democurator123" },
+  }
+
+  const loginAs = async (accountType: "buyer" | "seller" | "curator") => {
+    const account = demoAccounts[accountType]
+    setEmail(account.email)
+    setPassword(account.password)
+    setError("")
+    
+    const result = await login(account.email, account.password)
     if (result.success) {
       router.push(needsRoleSelection ? "/select-role" : "/dashboard")
+    } else {
+      setError(`Demo account not set up. Please sign up with your own email or contact support.`)
     }
   }
 
@@ -135,7 +146,7 @@ export default function LoginPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loginAs("buyer@example.com")}
+                onClick={() => loginAs("buyer")}
                 disabled={isLoading}
                 className="justify-start"
               >
@@ -147,7 +158,7 @@ export default function LoginPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loginAs("seller@example.com")}
+                onClick={() => loginAs("seller")}
                 disabled={isLoading}
                 className="justify-start"
               >
@@ -159,7 +170,7 @@ export default function LoginPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loginAs("curator@example.com")}
+                onClick={() => loginAs("curator")}
                 disabled={isLoading}
                 className="justify-start"
               >
