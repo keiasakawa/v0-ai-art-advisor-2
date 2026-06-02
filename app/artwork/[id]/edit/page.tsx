@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Upload, X, ImageIcon, AlertCircle, CheckCircle2, ArrowLeft, Save, FileText, Archive } from "lucide-react"
+import { Upload, X, ImageIcon, AlertCircle, ArrowLeft, Archive, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { getArtwork, updateArtwork, deleteArtwork, type ArtworkUpdate } from "@/app/actions/artwork"
 
 interface ArtworkFormData {
   images: File[]
@@ -55,30 +56,21 @@ interface ArtworkFormData {
   additionalNotes: string
 }
 
-// Mock data - in real app, fetch from API
-const mockArtwork = {
-  id: "1",
-  title: "Abstract Horizon",
-  artist: "Sarah Mitchell",
-  height: "48",
-  width: "36",
-  heightUnit: "in" as const,
-  widthUnit: "in" as const,
-  depth: "",
-  depthUnit: "in" as const,
-  signed: "yes" as const,
-  edition: "no" as const,
-  editionNumber: "",
-  editionSize: "",
-  year: "2023",
-  medium: "Oil on Canvas",
-  purchasePrice: "3500",
-  purchaseYear: "2022",
-  invoiceAvailable: "yes" as const,
-  provenance: "Direct from artist studio",
-  condition: "Excellent condition, no visible damage or restoration",
-  additionalNotes: "Part of the artist's urban landscape series",
-  existingImages: ["/abstract-urban-painting.png"],
+// Helper to parse dimensions string
+function parseDimensions(dimensions: string | null): { height: string; width: string; depth: string; unit: "cm" | "in" } {
+  if (!dimensions) return { height: "", width: "", depth: "", unit: "in" }
+  
+  // Try to parse "48 × 36 in" or "48 × 36 × 2 in" format
+  const match = dimensions.match(/^([\d.]+)\s*×\s*([\d.]+)(?:\s*×\s*([\d.]+))?\s*(in|cm)?$/i)
+  if (match) {
+    return {
+      height: match[1] || "",
+      width: match[2] || "",
+      depth: match[3] || "",
+      unit: (match[4]?.toLowerCase() as "cm" | "in") || "in"
+    }
+  }
+  return { height: "", width: "", depth: "", unit: "in" }
 }
 
 export default function EditArtworkPage() {
@@ -119,18 +111,48 @@ export default function EditArtworkPage() {
 
   // Load artwork data
   useEffect(() => {
-    // In real app, fetch from API using artworkId
-    const loadArtwork = () => {
+    const loadArtwork = async () => {
+      const result = await getArtwork(artworkId)
+      
+      if (!result.success || !result.data) {
+        console.error("[v0] Failed to load artwork:", result.error)
+        router.push("/my-collection")
+        return
+      }
+
+      const artwork = result.data
+      const dims = parseDimensions(artwork.dimensions)
+      
       setFormData({
-        ...mockArtwork,
         images: [],
+        existingImages: artwork.image_url ? [artwork.image_url] : [],
+        title: artwork.title || "",
+        artist: artwork.artist || "",
+        height: dims.height,
+        width: dims.width,
+        heightUnit: dims.unit,
+        widthUnit: dims.unit,
+        depth: artwork.depth || dims.depth,
+        depthUnit: dims.unit,
+        signed: artwork.signed ? "yes" : artwork.signed === false ? "no" : "",
+        edition: artwork.edition ? "yes" : artwork.edition === false ? "no" : "",
+        editionNumber: artwork.edition_number || "",
+        editionSize: artwork.edition_size || "",
+        year: artwork.year || "",
+        medium: artwork.medium || "",
+        purchasePrice: artwork.purchase_price?.toString() || "",
+        purchaseYear: artwork.purchase_year || "",
+        invoiceAvailable: artwork.invoice_available ? "yes" : artwork.invoice_available === false ? "no" : "",
+        provenance: artwork.provenance || "",
+        condition: artwork.condition || "",
+        additionalNotes: artwork.additional_notes || "",
       })
-      setImagePreviews(mockArtwork.existingImages)
+      setImagePreviews(artwork.image_url ? [artwork.image_url] : [])
       setDataLoaded(true)
     }
 
     loadArtwork()
-  }, [artworkId])
+  }, [artworkId, router])
 
   // Redirect if not authenticated or doesn't have seller role
   if (!isLoading && (!isAuthenticated || !hasRole("collector_seller"))) {
@@ -233,20 +255,67 @@ export default function EditArtworkPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      // Prepare update data
+      const imageUrl = formData.existingImages[0] || (formData.images.length > 0 ? "/abstract-colorful-artwork.png" : "/placeholder.svg")
 
-    console.log("Form updated:", formData)
+      const artworkData: ArtworkUpdate = {
+        id: artworkId,
+        title: formData.title,
+        artist: formData.artist,
+        year: formData.year || undefined,
+        medium: formData.medium || undefined,
+        dimensions: `${formData.height} × ${formData.width}${formData.depth ? ` × ${formData.depth}` : ""} ${formData.heightUnit}`,
+        depth: formData.depth || undefined,
+        purchase_price: formData.purchasePrice ? parseFloat(formData.purchasePrice) : undefined,
+        purchase_year: formData.purchaseYear || undefined,
+        provenance: formData.provenance || undefined,
+        certificate: formData.invoiceAvailable === "yes",
+        condition: formData.condition || undefined,
+        description: formData.additionalNotes || undefined,
+        image_url: imageUrl,
+        signed: formData.signed === "yes",
+        edition: formData.edition === "yes",
+        edition_number: formData.editionNumber || undefined,
+        edition_size: formData.editionSize || undefined,
+        invoice_available: formData.invoiceAvailable === "yes",
+        additional_notes: formData.additionalNotes || undefined,
+      }
 
-    router.push("/my-collection")
+      const result = await updateArtwork(artworkData)
+
+      if (!result.success) {
+        console.error("[v0] Error updating artwork:", result.error)
+        setErrors({ submit: result.error || "Failed to update artwork" })
+        setIsSubmitting(false)
+        return
+      }
+
+      router.push("/my-collection")
+    } catch (error) {
+      console.error("[v0] Error updating artwork:", error)
+      setErrors({ submit: "An unexpected error occurred" })
+      setIsSubmitting(false)
+    }
   }
 
   const handleArchive = async () => {
     setIsDeleting(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    // In real app, call API to archive/soft delete
-    console.log("Artwork archived:", artworkId)
-    router.push("/my-collection")
+    
+    try {
+      const result = await deleteArtwork(artworkId)
+      
+      if (!result.success) {
+        console.error("[v0] Error deleting artwork:", result.error)
+        setIsDeleting(false)
+        return
+      }
+      
+      router.push("/my-collection")
+    } catch (error) {
+      console.error("[v0] Error deleting artwork:", error)
+      setIsDeleting(false)
+    }
   }
 
   const updateField = (field: keyof ArtworkFormData, value: any) => {

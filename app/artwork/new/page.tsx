@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { artworkStorage } from "@/lib/artwork-storage"
+import { createArtwork, type ArtworkInsert } from "@/app/actions/artwork"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Upload, X, ImageIcon, AlertCircle, CheckCircle2, ArrowLeft, Save, FileText } from "lucide-react"
+import { Upload, X, ImageIcon, AlertCircle, ArrowLeft, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 interface ArtworkFormData {
@@ -168,46 +168,50 @@ export default function NewArtworkPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
     try {
       // In production, you would upload images to storage first
       // For now, we'll use a placeholder image URL
       const imageUrl = formData.images.length > 0 ? "/abstract-colorful-artwork.png" : "/placeholder.svg"
 
-      artworkStorage.add({
+      const artworkData: ArtworkInsert = {
         title: formData.title,
         artist: formData.artist,
-        year: formData.year,
-        medium: formData.medium,
+        year: formData.year || undefined,
+        medium: formData.medium || undefined,
         dimensions: `${formData.height} × ${formData.width}${formData.depth ? ` × ${formData.depth}` : ""} ${formData.heightUnit}`,
-        purchasePrice: formData.purchasePrice,
-        purchaseYear: formData.purchaseYear,
-        desiredPrice: "", // Can be set later when listing
-        provenance: formData.provenance,
+        depth: formData.depth || undefined,
+        purchase_price: formData.purchasePrice ? parseFloat(formData.purchasePrice) : undefined,
+        purchase_year: formData.purchaseYear || undefined,
+        provenance: formData.provenance || undefined,
         certificate: formData.invoiceAvailable === "yes",
-        condition: formData.condition,
-        description: formData.additionalNotes,
-        imageUrl,
+        condition: formData.condition || undefined,
+        description: formData.additionalNotes || undefined,
+        image_url: imageUrl,
         status: "draft",
         signed: formData.signed === "yes",
         edition: formData.edition === "yes",
-        editionNumber: formData.editionNumber,
-        editionSize: formData.editionSize,
-        depth: formData.depth,
-        additionalNotes: formData.additionalNotes,
-      })
+        edition_number: formData.editionNumber || undefined,
+        edition_size: formData.editionSize || undefined,
+        invoice_available: formData.invoiceAvailable === "yes",
+        additional_notes: formData.additionalNotes || undefined,
+      }
 
-      console.log("[v0] Artwork successfully saved to localStorage")
+      const result = await createArtwork(artworkData)
+
+      if (!result.success) {
+        console.error("[v0] Error saving artwork:", result.error)
+        setErrors({ submit: result.error || "Failed to save artwork" })
+        setIsSubmitting(false)
+        return
+      }
+
+      // Redirect to collection page
+      router.push("/my-collection")
     } catch (error) {
       console.error("[v0] Error saving artwork:", error)
+      setErrors({ submit: "An unexpected error occurred" })
       setIsSubmitting(false)
-      return
     }
-
-    // Redirect to collection page
-    router.push("/my-collection")
   }
 
   const updateField = (field: keyof ArtworkFormData, value: any) => {
