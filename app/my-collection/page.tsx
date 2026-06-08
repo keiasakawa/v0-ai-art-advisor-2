@@ -33,7 +33,7 @@ import {
   Award,
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { artworkStorage } from "@/lib/artwork-storage"
+import { getUserArtworks, createArtwork } from "@/app/actions/artwork"
 
 const statusConfig = {
   draft: { label: "Draft", icon: Clock, color: "bg-gray-100 text-gray-700" },
@@ -41,11 +41,34 @@ const statusConfig = {
   sold: { label: "Sold", icon: DollarSign, color: "bg-blue-100 text-blue-700" },
 }
 
+// Map a Supabase artwork row (snake_case) to the shape used by this page
+function mapArtwork(row: any) {
+  return {
+    id: row.id,
+    title: row.title,
+    artist: row.artist,
+    year: row.year,
+    medium: row.medium,
+    dimensions: row.dimensions,
+    purchasePrice: row.purchase_price != null ? String(row.purchase_price) : "",
+    purchaseYear: row.purchase_year || "",
+    desiredPrice: row.desired_price != null ? String(row.desired_price) : "",
+    provenance: row.provenance,
+    certificate: row.certificate || false,
+    condition: row.condition || "Good",
+    description: row.description,
+    imageUrl: row.image_url || "/placeholder.svg",
+    status: row.status || "draft",
+  }
+}
+
 export default function MyCollectionPage() {
   const router = useRouter()
   const { user, isAuthenticated, hasRole, isLoading } = useAuth()
   const [collection, setCollection] = useState<any[]>([])
+  const [isLoadingArtworks, setIsLoadingArtworks] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [newArtwork, setNewArtwork] = useState<any>({
     certificate: false,
     condition: "Excellent",
@@ -56,34 +79,45 @@ export default function MyCollectionPage() {
     if (!isLoading && !isAuthenticated) {
       router.push("/login")
     } else if (isAuthenticated) {
-      const artworks = artworkStorage.getAll()
-      setCollection(artworks)
+      const loadArtworks = async () => {
+        setIsLoadingArtworks(true)
+        const result = await getUserArtworks()
+        if (result.success) {
+          setCollection(result.data.map(mapArtwork))
+        }
+        setIsLoadingArtworks(false)
+      }
+      loadArtworks()
     }
   }, [isLoading, isAuthenticated, router])
 
-  const handleAddArtwork = () => {
+  const handleAddArtwork = async () => {
     if (!newArtwork.title || !newArtwork.artist) return
 
-    const addedArtwork = artworkStorage.add({
+    setIsSaving(true)
+    const result = await createArtwork({
       title: newArtwork.title || "",
       artist: newArtwork.artist || "",
-      year: newArtwork.year || "",
-      medium: newArtwork.medium || "",
-      dimensions: newArtwork.dimensions || "",
-      purchasePrice: newArtwork.purchasePrice || "",
-      purchaseYear: newArtwork.purchaseYear || "",
-      desiredPrice: newArtwork.desiredPrice || "",
-      provenance: newArtwork.provenance || "",
+      year: newArtwork.year || undefined,
+      medium: newArtwork.medium || undefined,
+      dimensions: newArtwork.dimensions || undefined,
+      purchase_price: newArtwork.purchasePrice ? Number.parseFloat(newArtwork.purchasePrice) : undefined,
+      purchase_year: newArtwork.purchaseYear || undefined,
+      desired_price: newArtwork.desiredPrice ? Number.parseFloat(newArtwork.desiredPrice) : undefined,
+      provenance: newArtwork.provenance || undefined,
       certificate: newArtwork.certificate || false,
       condition: newArtwork.condition || "Good",
-      description: newArtwork.description || "",
-      imageUrl: "/abstract-colorful-artwork.png",
+      description: newArtwork.description || undefined,
+      image_url: "/abstract-colorful-artwork.png",
       status: "draft",
     })
+    setIsSaving(false)
 
-    setCollection([addedArtwork, ...collection])
-    setNewArtwork({ certificate: false, condition: "Excellent", status: "draft" })
-    setIsAddDialogOpen(false)
+    if (result.success && result.data) {
+      setCollection([mapArtwork(result.data), ...collection])
+      setNewArtwork({ certificate: false, condition: "Excellent", status: "draft" })
+      setIsAddDialogOpen(false)
+    }
   }
 
   const totalValue = collection.reduce(
@@ -284,8 +318,8 @@ export default function MyCollectionPage() {
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddArtwork} disabled={!newArtwork.title || !newArtwork.artist}>
-                    Add to Collection
+                  <Button onClick={handleAddArtwork} disabled={!newArtwork.title || !newArtwork.artist || isSaving}>
+                    {isSaving ? "Adding..." : "Add to Collection"}
                   </Button>
                 </div>
               </div>
@@ -337,7 +371,14 @@ export default function MyCollectionPage() {
         </div>
 
         {/* Collection Grid */}
-        {collection.length === 0 ? (
+        {isLoadingArtworks ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <div className="h-8 w-8 mx-auto mb-4 rounded-full border-2 border-muted border-t-emerald-600 animate-spin" />
+              <p className="text-muted-foreground">Loading your collection...</p>
+            </CardContent>
+          </Card>
+        ) : collection.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
