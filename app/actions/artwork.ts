@@ -135,6 +135,23 @@ export async function getArtwork(id: string) {
   return { success: true, data: artwork }
 }
 
+export async function getListedArtworks() {
+  const supabase = await createClient()
+
+  const { data: artworks, error } = await supabase
+    .from("artworks")
+    .select("*")
+    .eq("status", "listed")
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[v0] Error fetching listed artworks:", error)
+    return { success: false, error: error.message, data: [] }
+  }
+
+  return { success: true, data: artworks || [] }
+}
+
 export async function getUserArtworks() {
   const supabase = await createClient()
   

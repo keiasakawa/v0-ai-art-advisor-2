@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -10,103 +10,59 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Heart, Search, SlidersHorizontal, Grid3X3, LayoutList, X } from "lucide-react"
+import { Heart, Search, SlidersHorizontal, Grid3X3, LayoutList, X, Loader2 } from "lucide-react"
+import { getListedArtworks } from "@/app/actions/artwork"
 
-// Mock artwork data
-const artworks = [
-  {
-    id: "1",
-    title: "Urban Synthesis",
-    artist: "Maya Rodriguez",
-    price: 8500,
-    category: "Abstract",
-    medium: "Oil on Canvas",
-    year: 2023,
-    size: "48 × 36 in",
-    imageUrl: "/abstract-urban-painting.png",
-  },
-  {
-    id: "2",
-    title: "Digital Dreams",
-    artist: "Alex Chen",
-    price: 12000,
-    category: "Digital",
-    medium: "Digital Print",
-    year: 2024,
-    size: "40 × 30 in",
-    imageUrl: "/digital-art-colorful.jpg",
-  },
-  {
-    id: "3",
-    title: "Ethereal Landscape",
-    artist: "Sofia Andersson",
-    price: 6200,
-    category: "Landscape",
-    medium: "Acrylic on Canvas",
-    year: 2023,
-    size: "36 × 24 in",
-    imageUrl: "/ethereal-landscape-painting.jpg",
-  },
-  {
-    id: "4",
-    title: "Geometric Harmony",
-    artist: "James Park",
-    price: 4800,
-    category: "Abstract",
-    medium: "Mixed Media",
-    year: 2024,
-    size: "24 × 24 in",
-    imageUrl: "/geometric-abstract.png",
-  },
-  {
-    id: "5",
-    title: "Temporal Shift",
-    artist: "Isabella Santos",
-    price: 15000,
-    category: "Contemporary",
-    medium: "Oil on Linen",
-    year: 2022,
-    size: "60 × 48 in",
-    imageUrl: "/contemporary-abstract.jpg",
-  },
-  {
-    id: "6",
-    title: "Celestial Bodies",
-    artist: "Marcus Wong",
-    price: 9500,
-    category: "Abstract",
-    medium: "Acrylic on Canvas",
-    year: 2024,
-    size: "48 × 36 in",
-    imageUrl: "/space-abstract-art.jpg",
-  },
-  {
-    id: "7",
-    title: "Material Futures",
-    artist: "Eva Klein",
-    price: 22000,
-    category: "Sculpture",
-    medium: "Latex and Steel",
-    year: 2023,
-    size: "72 × 36 × 36 in",
-    imageUrl: "/abstract-latex-sculpture-hanging-organic-forms.jpg",
-  },
-  {
-    id: "8",
-    title: "Industrial Memory",
-    artist: "Robert Fischer",
-    price: 18500,
-    category: "Sculpture",
-    medium: "Felt and Metal",
-    year: 2024,
-    size: "48 × 24 × 12 in",
-    imageUrl: "/industrial-felt-art-installation-gray-minimalist.jpg",
-  },
-]
+interface BrowseArtwork {
+  id: string
+  title: string
+  artist: string
+  price: number
+  category: string
+  medium: string
+  year: number
+  size: string
+  imageUrl: string
+}
 
-const categories = ["All", "Abstract", "Contemporary", "Digital", "Landscape", "Sculpture"]
+// Derive a display category from the artwork medium
+function deriveCategory(medium: string | null): string {
+  const m = (medium || "").toLowerCase()
+  if (m.includes("digital") || m.includes("print") || m.includes("nft") || m.includes("photo")) return "Digital"
+  if (
+    m.includes("steel") ||
+    m.includes("metal") ||
+    m.includes("bronze") ||
+    m.includes("sculpture") ||
+    m.includes("wood") ||
+    m.includes("ceramic") ||
+    m.includes("marble") ||
+    m.includes("felt")
+  )
+    return "Sculpture"
+  if (m.includes("landscape")) return "Landscape"
+  if (m.includes("oil") || m.includes("acrylic") || m.includes("watercolor") || m.includes("canvas")) return "Painting"
+  return "Contemporary"
+}
+
+// Map a Supabase artwork row (snake_case) to the shape used by this page
+function mapArtwork(row: any): BrowseArtwork {
+  return {
+    id: row.id,
+    title: row.title || "Untitled",
+    artist: row.artist || "Unknown Artist",
+    price: Number(row.desired_price) || Number(row.purchase_price) || 0,
+    category: deriveCategory(row.medium),
+    medium: row.medium || "—",
+    year: Number.parseInt(row.year) || 0,
+    size: row.dimensions || "—",
+    imageUrl: row.image_url || "/placeholder.svg",
+  }
+}
 
 export default function BrowsePage() {
+  const [artworks, setArtworks] = useState<BrowseArtwork[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [category, setCategory] = useState("All")
   const [priceRange, setPriceRange] = useState([0, 50000])
@@ -114,6 +70,21 @@ export default function BrowsePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [showFilters, setShowFilters] = useState(false)
   const [savedArtworks, setSavedArtworks] = useState<string[]>([])
+
+  useEffect(() => {
+    const loadArtworks = async () => {
+      setIsLoading(true)
+      const result = await getListedArtworks()
+      if (result.success) {
+        setArtworks(result.data.map(mapArtwork))
+      }
+      setIsLoading(false)
+    }
+    loadArtworks()
+  }, [])
+
+  // Build category list dynamically from loaded artworks
+  const categories = ["All", ...Array.from(new Set(artworks.map((a) => a.category))).sort()]
 
   const toggleSave = (id: string) => {
     setSavedArtworks((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
@@ -142,7 +113,9 @@ export default function BrowsePage() {
         <div className="mx-auto max-w-7xl px-6 py-8">
           <h1 className="text-3xl font-bold">Browse Artworks</h1>
           <p className="text-muted-foreground mt-1">
-            Discover {artworks.length} curated artworks from leading galleries
+            {isLoading
+              ? "Loading artworks..."
+              : `Discover ${artworks.length} curated artwork${artworks.length !== 1 ? "s" : ""} from leading galleries`}
           </p>
         </div>
       </div>
@@ -274,8 +247,13 @@ export default function BrowsePage() {
           Showing {filteredArtworks.length} artwork{filteredArtworks.length !== 1 ? "s" : ""}
         </p>
 
-        {/* Artwork Grid */}
-        {viewMode === "grid" ? (
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground mt-4">Loading artworks...</p>
+          </div>
+        ) : viewMode === "grid" ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredArtworks.map((artwork, index) => (
               <motion.div
@@ -375,7 +353,7 @@ export default function BrowsePage() {
           </div>
         )}
 
-        {filteredArtworks.length === 0 && (
+        {!isLoading && filteredArtworks.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No artworks found matching your criteria.</p>
             <Button
