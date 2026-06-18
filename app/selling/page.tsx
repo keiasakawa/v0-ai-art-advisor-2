@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getUserArtworks, updateArtwork } from "@/app/actions/artwork";
+import { createListing } from "@/app/actions/listings";
 
 interface Artwork {
   id: string;
@@ -141,26 +142,36 @@ export default function SellingDashboard() {
   const handleListArtwork = async (artwork: Artwork) => {
     setListingId(artwork.id);
     const priceInput = listingPrices[artwork.id] ?? artwork.desiredPrice;
-    const desiredPrice = priceInput ? Number.parseFloat(priceInput) : undefined;
+    const price = priceInput ? Number.parseFloat(priceInput) : 0;
 
-    const result = await updateArtwork({
+    // 1. Mark the artwork as listed
+    const artworkResult = await updateArtwork({
       id: artwork.id,
       status: "listed",
-      ...(desiredPrice != null && !Number.isNaN(desiredPrice)
-        ? { desired_price: desiredPrice }
-        : {}),
+      ...(price > 0 ? { desired_price: price } : {}),
     });
-    setListingId(null);
 
-    if (result.success) {
-      await loadArtworks();
-      // Close dialog if no more drafts remain
-      const remainingDrafts = listings.filter(
-        (a) => a.status === "draft" && a.id !== artwork.id,
-      );
-      if (remainingDrafts.length === 0) {
-        setIsListDialogOpen(false);
-      }
+    if (!artworkResult.success) {
+      setListingId(null);
+      return;
+    }
+
+    // 2. Create a new row in the listings table
+    await createListing({
+      artwork_id: artwork.id,
+      price: price > 0 ? price : 0,
+      listing_type: "fixed",
+    });
+
+    setListingId(null);
+    await loadArtworks();
+
+    // Close dialog if no more drafts remain
+    const remainingDrafts = listings.filter(
+      (a) => a.status === "draft" && a.id !== artwork.id,
+    );
+    if (remainingDrafts.length === 0) {
+      setIsListDialogOpen(false);
     }
   };
 
