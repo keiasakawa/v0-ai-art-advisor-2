@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import type { User as SupabaseUser, SupabaseClient } from "@supabase/supabase-js";
 
 export type UserRole = "collector_buyer" | "collector_seller" | "curator";
 
@@ -47,18 +47,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper to safely create client
+function getSupabaseClient(): SupabaseClient | null {
+  try {
+    return createClient();
+  } catch {
+    // Supabase not configured
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsRoleSelection, setNeedsRoleSelection] = useState(false);
-
-  const supabase = createClient();
+  const [supabase] = useState<SupabaseClient | null>(() => getSupabaseClient());
 
   // Fetch profile data from Supabase
   const fetchProfile = async (
     supabaseUser: SupabaseUser,
   ): Promise<User | null> => {
+    if (!supabase) return null;
+    
     const { data: profile, error } = await supabase
       .from("profiles")
       .select("*")
@@ -93,6 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // If Supabase is not configured, just set loading to false
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
+
     // Check current session on mount
     const initAuth = async () => {
       const {
@@ -143,6 +160,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
   ): Promise<{ success: boolean; error?: string }> => {
+    if (!supabase) {
+      return { success: false, error: "Supabase is not configured" };
+    }
+
     setIsLoading(true);
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -175,13 +196,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
   ): Promise<{ success: boolean; error?: string }> => {
+    if (!supabase) {
+      return { success: false, error: "Supabase is not configured" };
+    }
+
     setIsLoading(true);
 
     // Build the redirect URL - use the v0 proxy URL if available, otherwise use origin
     const redirectUrl = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL 
       || `${window.location.origin}/auth/callback`
-    
-    console.log("[v0] Signup redirect URL:", redirectUrl)
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -220,14 +243,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setSupabaseUser(null);
     setNeedsRoleSelection(false);
   };
 
   const selectRole = async (role: UserRole) => {
-    if (!user) return;
+    if (!user || !supabase) return;
 
     const updatedRoles = user.roles.includes(role)
       ? user.roles
@@ -251,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchRole = async (role: UserRole) => {
-    if (!user || !user.roles.includes(role)) return;
+    if (!user || !user.roles.includes(role) || !supabase) return;
 
     // Update active role in Supabase
     const { error } = await supabase
@@ -269,7 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const addRole = async (role: UserRole) => {
-    if (!user || user.roles.includes(role)) return;
+    if (!user || user.roles.includes(role) || !supabase) return;
 
     const updatedRoles = [...user.roles, role];
 

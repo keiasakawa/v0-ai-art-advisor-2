@@ -18,10 +18,43 @@ import {
   AlertCircle,
   ArrowRight,
   BarChart3,
+  Loader2,
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
-import { artworkStorage, type Artwork } from "@/lib/artwork-storage"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { getUserArtworks, updateArtwork } from "@/app/actions/artwork"
+
+interface Artwork {
+  id: string
+  title: string
+  imageUrl: string
+  status: string
+  createdAt: string
+  desiredPrice: string
+  purchasePrice: string
+}
+
+// Map a Supabase artwork row (snake_case) to the shape used by this page
+function mapArtwork(row: any): Artwork {
+  return {
+    id: row.id,
+    title: row.title || "Untitled",
+    imageUrl: row.image_url || "/placeholder.svg",
+    status: row.status || "draft",
+    createdAt: row.created_at || new Date().toISOString(),
+    desiredPrice: row.desired_price != null ? String(row.desired_price) : "",
+    purchasePrice: row.purchase_price != null ? String(row.purchase_price) : "",
+  }
+}
 
 const statusConfig = {
   active: { label: "Active", icon: CheckCircle2, color: "bg-green-100 text-green-700" },
@@ -35,15 +68,51 @@ export default function SellingDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, hasRole, isLoading } = useAuth()
   const [listings, setListings] = useState<Artwork[]>([])
+  const [isLoadingArtworks, setIsLoadingArtworks] = useState(true)
+  const [isListDialogOpen, setIsListDialogOpen] = useState(false)
+  const [listingPrices, setListingPrices] = useState<Record<string, string>>({})
+  const [listingId, setListingId] = useState<string | null>(null)
+
+  const loadArtworks = async () => {
+    setIsLoadingArtworks(true)
+    const result = await getUserArtworks()
+    if (result.success) {
+      setListings(result.data.map(mapArtwork))
+    }
+    setIsLoadingArtworks(false)
+  }
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login")
     } else if (isAuthenticated) {
-      const artworks = artworkStorage.getAll()
-      setListings(artworks)
+      loadArtworks()
     }
   }, [isLoading, isAuthenticated, router])
+
+  const draftArtworks = listings.filter((a) => a.status === "draft")
+
+  const handleListArtwork = async (artwork: Artwork) => {
+    setListingId(artwork.id)
+    const priceInput = listingPrices[artwork.id] ?? artwork.desiredPrice
+    const desiredPrice = priceInput ? Number.parseFloat(priceInput) : undefined
+
+    const result = await updateArtwork({
+      id: artwork.id,
+      status: "listed",
+      ...(desiredPrice != null && !Number.isNaN(desiredPrice) ? { desired_price: desiredPrice } : {}),
+    })
+    setListingId(null)
+
+    if (result.success) {
+      await loadArtworks()
+      // Close dialog if no more drafts remain
+      const remainingDrafts = listings.filter((a) => a.status === "draft" && a.id !== artwork.id)
+      if (remainingDrafts.length === 0) {
+        setIsListDialogOpen(false)
+      }
+    }
+  }
 
   const sellerStats = {
     totalListings: listings.length,
@@ -98,11 +167,9 @@ export default function SellingDashboard() {
             </h1>
             <p className="text-muted-foreground mt-1">Manage your art listings and sales</p>
           </div>
-          <Button size="lg" asChild>
-            <Link href="/artwork/new">
-              <Plus className="mr-2 h-4 w-4" />
-              List New Artwork
-            </Link>
+          <Button size="lg" onClick={() => setIsListDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            List New Artwork
           </Button>
         </div>
 
@@ -190,7 +257,12 @@ export default function SellingDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {listings.length === 0 ? (
+            {isLoadingArtworks ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground mt-4">Loading your listings...</p>
+              </div>
+            ) : listings.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No listings yet</h3>
@@ -267,6 +339,79 @@ export default function SellingDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* List New Artwork Dialog */}
+      <Dialog open={isListDialogOpen} onOpenChange={setIsListDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>List New Artwork</DialogTitle>
+            <DialogDescription>
+              Choose a draft from your collection to list for sale, or create a brand new artwork.
+            </DialogDescription>
+          </DialogHeader>
+
+          {draftArtworks.length === 0 ? (
+            <div className="text-center py-8">
+              <Package className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground mb-4">You don&apos;t have any drafts to list yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[55vh] overflow-y-auto">
+              {draftArtworks.map((artwork) => (
+                <div
+                  key={artwork.id}
+                  className="flex items-center gap-3 rounded-lg border bg-card p-3"
+                >
+                  <img
+                    src={artwork.imageUrl || "/placeholder.svg"}
+                    alt={artwork.title}
+                    className="h-14 w-14 rounded-md object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{artwork.title}</p>
+                    <div className="relative mt-1">
+                      <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Set price"
+                        className="h-8 pl-7 text-sm"
+                        value={listingPrices[artwork.id] ?? artwork.desiredPrice}
+                        onChange={(e) =>
+                          setListingPrices((prev) => ({ ...prev, [artwork.id]: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleListArtwork(artwork)}
+                    disabled={listingId === artwork.id}
+                  >
+                    {listingId === artwork.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "List"
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter className="sm:justify-between gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/artwork/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Artwork
+              </Link>
+            </Button>
+            <Button variant="ghost" onClick={() => setIsListDialogOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
