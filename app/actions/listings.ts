@@ -7,10 +7,14 @@ export async function createListing({
   artwork_id,
   price,
   listing_type = "fixed",
+  auction_starting_bid,
+  auction_end_date,
 }: {
   artwork_id: string;
   price: number;
   listing_type?: "fixed" | "auction";
+  auction_starting_bid?: number;
+  auction_end_date?: string;
 }) {
   const supabase = await createClient();
 
@@ -30,6 +34,12 @@ export async function createListing({
       price,
       listing_type,
       status: "active",
+      ...(listing_type === "auction" && auction_starting_bid != null
+        ? { auction_starting_bid }
+        : {}),
+      ...(listing_type === "auction" && auction_end_date
+        ? { auction_end_date }
+        : {}),
     })
     .select()
     .single();
