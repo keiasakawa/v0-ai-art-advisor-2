@@ -1,34 +1,54 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Heart, Search, SlidersHorizontal, Grid3X3, LayoutList, X, Loader2 } from "lucide-react"
-import { getListedArtworks } from "@/app/actions/artwork"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import {
+  Heart,
+  Search,
+  SlidersHorizontal,
+  Grid3X3,
+  LayoutList,
+  X,
+  Loader2,
+} from "lucide-react";
+import { getListedArtworks } from "@/app/actions/artwork";
 
 interface BrowseArtwork {
-  id: string
-  title: string
-  artist: string
-  price: number
-  category: string
-  medium: string
-  year: number
-  size: string
-  imageUrl: string
+  id: string;
+  title: string;
+  artist: string;
+  price: number;
+  category: string;
+  medium: string;
+  year: number;
+  size: string;
+  imageUrl: string;
 }
 
 // Derive a display category from the artwork medium
 function deriveCategory(medium: string | null): string {
-  const m = (medium || "").toLowerCase()
-  if (m.includes("digital") || m.includes("print") || m.includes("nft") || m.includes("photo")) return "Digital"
+  const m = (medium || "").toLowerCase();
+  if (
+    m.includes("digital") ||
+    m.includes("print") ||
+    m.includes("nft") ||
+    m.includes("photo")
+  )
+    return "Digital";
   if (
     m.includes("steel") ||
     m.includes("metal") ||
@@ -39,10 +59,16 @@ function deriveCategory(medium: string | null): string {
     m.includes("marble") ||
     m.includes("felt")
   )
-    return "Sculpture"
-  if (m.includes("landscape")) return "Landscape"
-  if (m.includes("oil") || m.includes("acrylic") || m.includes("watercolor") || m.includes("canvas")) return "Painting"
-  return "Contemporary"
+    return "Sculpture";
+  if (m.includes("landscape")) return "Landscape";
+  if (
+    m.includes("oil") ||
+    m.includes("acrylic") ||
+    m.includes("watercolor") ||
+    m.includes("canvas")
+  )
+    return "Painting";
+  return "Contemporary";
 }
 
 // Map a Supabase artwork row (snake_case) to the shape used by this page
@@ -57,54 +83,66 @@ function mapArtwork(row: any): BrowseArtwork {
     year: Number.parseInt(row.year) || 0,
     size: row.dimensions || "—",
     imageUrl: row.image_url || "/placeholder.svg",
-  }
+  };
 }
 
 export default function BrowsePage() {
-  const [artworks, setArtworks] = useState<BrowseArtwork[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [category, setCategory] = useState("All")
-  const [priceRange, setPriceRange] = useState([0, 50000])
-  const [sortBy, setSortBy] = useState("newest")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [showFilters, setShowFilters] = useState(false)
-  const [savedArtworks, setSavedArtworks] = useState<string[]>([])
+  const [artworks, setArtworks] = useState<BrowseArtwork[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [category, setCategory] = useState("All");
+  const [sortBy, setSortBy] = useState("newest");
+  const [priceRange, setPriceRange] = useState([0, 50000]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
+  const [savedArtworks, setSavedArtworks] = useState<string[]>([]);
+
+  const categories = [
+    "All",
+    ...Array.from(new Set(artworks.map((a) => a.category))).sort(),
+  ];
+
+  const maxPrice = Math.max(...artworks.map((a) => a.price), 0);
 
   useEffect(() => {
     const loadArtworks = async () => {
-      setIsLoading(true)
-      const result = await getListedArtworks()
+      setIsLoading(true);
+
+      const result = await getListedArtworks();
+
       if (result.success) {
-        setArtworks(result.data.map(mapArtwork))
+        const mapped = result.data.map(mapArtwork);
+        setArtworks(mapped);
+
+        const highestPrice = Math.max(...mapped.map((a) => a.price), 0);
+        setPriceRange([0, highestPrice]);
       }
-      setIsLoading(false)
-    }
-    loadArtworks()
-  }, [])
 
-  // Build category list dynamically from loaded artworks
-  const categories = ["All", ...Array.from(new Set(artworks.map((a) => a.category))).sort()]
+      setIsLoading(false);
+    };
 
-  const toggleSave = (id: string) => {
-    setSavedArtworks((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
-  }
+    loadArtworks();
+  }, []);
 
   const filteredArtworks = artworks
     .filter((art) => {
       const matchesSearch =
         art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        art.artist.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCategory = category === "All" || art.category === category
-      const matchesPrice = art.price >= priceRange[0] && art.price <= priceRange[1]
-      return matchesSearch && matchesCategory && matchesPrice
+        art.artist.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = category === "All" || art.category === category;
+      const matchesPrice =
+        art.price >= priceRange[0] && art.price <= priceRange[1];
+      console.log(
+        `Filtering "${art.title}" by ${art.artist}: search=${matchesSearch}, category=${matchesCategory}, price=${matchesPrice}`,
+      );
+      return matchesSearch && matchesCategory && matchesPrice;
     })
     .sort((a, b) => {
-      if (sortBy === "price-low") return a.price - b.price
-      if (sortBy === "price-high") return b.price - a.price
-      if (sortBy === "newest") return b.year - a.year
-      return 0
-    })
+      if (sortBy === "price-low") return a.price - b.price;
+      if (sortBy === "price-high") return b.price - a.price;
+      if (sortBy === "newest") return b.year - a.year;
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,7 +197,9 @@ export default function BrowsePage() {
               variant="outline"
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className={showFilters ? "bg-primary text-primary-foreground" : ""}
+              className={
+                showFilters ? "bg-primary text-primary-foreground" : ""
+              }
             >
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
@@ -195,7 +235,13 @@ export default function BrowsePage() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-2">
                     <Label>Price Range</Label>
-                    <Slider value={priceRange} onValueChange={setPriceRange} min={0} max={50000} step={1000} />
+                    <Slider
+                      value={priceRange}
+                      onValueChange={setPriceRange}
+                      min={0}
+                      max={maxPrice}
+                      step={1000}
+                    />
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>${priceRange[0].toLocaleString()}</span>
                       <span>${priceRange[1].toLocaleString()}</span>
@@ -208,33 +254,46 @@ export default function BrowsePage() {
         )}
 
         {/* Active Filters */}
-        {(category !== "All" || searchQuery || priceRange[0] > 0 || priceRange[1] < 50000) && (
+        {(category !== "All" ||
+          searchQuery ||
+          priceRange[0] > 0 ||
+          priceRange[1] < Math.max(...artworks.map((a) => a.price))) && (
           <div className="flex flex-wrap gap-2 mb-6">
             {category !== "All" && (
               <Badge variant="secondary" className="gap-1">
                 {category}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setCategory("All")} />
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => setCategory("All")}
+                />
               </Badge>
             )}
             {searchQuery && (
               <Badge variant="secondary" className="gap-1">
                 "{searchQuery}"
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchQuery("")} />
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => setSearchQuery("")}
+                />
               </Badge>
             )}
-            {(priceRange[0] > 0 || priceRange[1] < 50000) && (
+            {(priceRange[0] > 0 || priceRange[1] < maxPrice1) && (
               <Badge variant="secondary" className="gap-1">
-                ${priceRange[0].toLocaleString()} - ${priceRange[1].toLocaleString()}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setPriceRange([0, 50000])} />
+                ${priceRange[0].toLocaleString()} - $
+                {priceRange[1].toLocaleString()}
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => setPriceRange([0, maxPrice])}
+                />
               </Badge>
             )}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
-                setCategory("All")
-                setSearchQuery("")
-                setPriceRange([0, 50000])
+                setCategory("All");
+                setSearchQuery("");
+                setPriceRange([0, maxPrice]);
               }}
             >
               Clear all
@@ -244,7 +303,8 @@ export default function BrowsePage() {
 
         {/* Results Count */}
         <p className="text-sm text-muted-foreground mb-4">
-          Showing {filteredArtworks.length} artwork{filteredArtworks.length !== 1 ? "s" : ""}
+          Showing {filteredArtworks.length} artwork
+          {filteredArtworks.length !== 1 ? "s" : ""}
         </p>
 
         {/* Loading State */}
@@ -274,25 +334,41 @@ export default function BrowsePage() {
                       variant="secondary"
                       size="icon"
                       className={`absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity ${
-                        savedArtworks.includes(artwork.id) ? "opacity-100 bg-red-50 text-red-500" : ""
+                        savedArtworks.includes(artwork.id)
+                          ? "opacity-100 bg-red-50 text-red-500"
+                          : ""
                       }`}
                       onClick={() => toggleSave(artwork.id)}
                     >
-                      <Heart className={`h-4 w-4 ${savedArtworks.includes(artwork.id) ? "fill-current" : ""}`} />
+                      <Heart
+                        className={`h-4 w-4 ${savedArtworks.includes(artwork.id) ? "fill-current" : ""}`}
+                      />
                     </Button>
-                    <Badge className="absolute bottom-3 left-3" variant="secondary">
+                    <Badge
+                      className="absolute bottom-3 left-3"
+                      variant="secondary"
+                    >
                       {artwork.category}
                     </Badge>
                   </div>
                   <CardContent className="p-4">
-                    <Link href={`/artwork/${artwork.id}`} className="hover:underline">
-                      <h3 className="font-semibold line-clamp-1">{artwork.title}</h3>
+                    <Link
+                      href={`/artwork/${artwork.id}`}
+                      className="hover:underline"
+                    >
+                      <h3 className="font-semibold line-clamp-1">
+                        {artwork.title}
+                      </h3>
                     </Link>
-                    <p className="text-sm text-muted-foreground">{artwork.artist}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {artwork.artist}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {artwork.medium}, {artwork.year}
                     </p>
-                    <p className="text-lg font-bold mt-2">${artwork.price.toLocaleString()}</p>
+                    <p className="text-lg font-bold mt-2">
+                      ${artwork.price.toLocaleString()}
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -319,10 +395,15 @@ export default function BrowsePage() {
                     <CardContent className="flex-1 p-4">
                       <div className="flex items-start justify-between">
                         <div>
-                          <Link href={`/artwork/${artwork.id}`} className="hover:underline">
+                          <Link
+                            href={`/artwork/${artwork.id}`}
+                            className="hover:underline"
+                          >
                             <h3 className="font-semibold">{artwork.title}</h3>
                           </Link>
-                          <p className="text-muted-foreground">{artwork.artist}</p>
+                          <p className="text-muted-foreground">
+                            {artwork.artist}
+                          </p>
                           <p className="text-sm text-muted-foreground mt-1">
                             {artwork.medium} · {artwork.size} · {artwork.year}
                           </p>
@@ -331,7 +412,9 @@ export default function BrowsePage() {
                           </Badge>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold">${artwork.price.toLocaleString()}</p>
+                          <p className="text-xl font-bold">
+                            ${artwork.price.toLocaleString()}
+                          </p>
                           <Button
                             variant="outline"
                             size="sm"
@@ -341,7 +424,9 @@ export default function BrowsePage() {
                             <Heart
                               className={`h-4 w-4 mr-2 ${savedArtworks.includes(artwork.id) ? "fill-current text-red-500" : ""}`}
                             />
-                            {savedArtworks.includes(artwork.id) ? "Saved" : "Save"}
+                            {savedArtworks.includes(artwork.id)
+                              ? "Saved"
+                              : "Save"}
                           </Button>
                         </div>
                       </div>
@@ -355,14 +440,16 @@ export default function BrowsePage() {
 
         {!isLoading && filteredArtworks.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No artworks found matching your criteria.</p>
+            <p className="text-muted-foreground">
+              No artworks found matching your criteria.
+            </p>
             <Button
               variant="outline"
               className="mt-4 bg-transparent"
               onClick={() => {
-                setCategory("All")
-                setSearchQuery("")
-                setPriceRange([0, 50000])
+                setCategory("All");
+                setSearchQuery("");
+                setPriceRange([0, maxPrice]);
               }}
             >
               Clear filters
@@ -371,5 +458,5 @@ export default function BrowsePage() {
         )}
       </div>
     </div>
-  )
+  );
 }
