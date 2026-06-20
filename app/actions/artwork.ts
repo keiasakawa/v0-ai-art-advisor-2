@@ -152,6 +152,33 @@ export async function getListedArtworks() {
   return { success: true, data: artworks || [] }
 }
 
+export async function getArtworkWithListing(id: string) {
+  const supabase = await createClient()
+
+  // Fetch artwork row
+  const { data: artwork, error: artworkError } = await supabase
+    .from("artworks")
+    .select("*")
+    .eq("id", id)
+    .single()
+
+  if (artworkError || !artwork) {
+    return { success: false, error: artworkError?.message ?? "Not found" }
+  }
+
+  // Fetch most recent active listing for this artwork
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("*")
+    .eq("artwork_id", id)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return { success: true, data: { artwork, listing: listing ?? null } }
+}
+
 export async function getUserArtworks() {
   const supabase = await createClient()
   
