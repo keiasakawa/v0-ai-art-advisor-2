@@ -25,6 +25,9 @@ import {
   ArrowRight,
   BarChart3,
   Loader2,
+  Gavel,
+  Tag,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
@@ -38,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getUserArtworks, updateArtwork } from "@/app/actions/artwork";
+import { createListing, takeDownListing } from "@/app/actions/listings";
 
 interface Artwork {
   id: string;
@@ -117,7 +121,18 @@ export default function SellingDashboard() {
   const [listingPrices, setListingPrices] = useState<Record<string, string>>(
     {},
   );
+  const [listingTypes, setListingTypes] = useState<
+    Record<string, "fixed" | "auction">
+  >({});
+  const [auctionStartingBids, setAuctionStartingBids] = useState<
+    Record<string, string>
+  >({});
+  const [auctionEndDates, setAuctionEndDates] = useState<
+    Record<string, string>
+  >({});
   const [listingId, setListingId] = useState<string | null>(null);
+  const [takeDownId, setTakeDownId] = useState<string | null>(null);
+  const [isTakingDown, setIsTakingDown] = useState(false);
 
   const loadArtworks = async () => {
     setIsLoadingArtworks(true);
@@ -140,28 +155,56 @@ export default function SellingDashboard() {
 
   const handleListArtwork = async (artwork: Artwork) => {
     setListingId(artwork.id);
+    const type = listingTypes[artwork.id] ?? "fixed";
     const priceInput = listingPrices[artwork.id] ?? artwork.desiredPrice;
-    const desiredPrice = priceInput ? Number.parseFloat(priceInput) : undefined;
+    const price = priceInput ? Number.parseFloat(priceInput) : 0;
+    const startingBid = auctionStartingBids[artwork.id]
+      ? Number.parseFloat(auctionStartingBids[artwork.id])
+      : undefined;
+    const endDate = auctionEndDates[artwork.id] || undefined;
 
-    const result = await updateArtwork({
+    // 1. Mark the artwork as listed
+    const artworkResult = await updateArtwork({
       id: artwork.id,
       status: "listed",
-      ...(desiredPrice != null && !Number.isNaN(desiredPrice)
-        ? { desired_price: desiredPrice }
-        : {}),
+      ...(price > 0 ? { desired_price: price } : {}),
     });
-    setListingId(null);
 
-    if (result.success) {
-      await loadArtworks();
-      // Close dialog if no more drafts remain
-      const remainingDrafts = listings.filter(
-        (a) => a.status === "draft" && a.id !== artwork.id,
-      );
-      if (remainingDrafts.length === 0) {
-        setIsListDialogOpen(false);
-      }
+    if (!artworkResult.success) {
+      setListingId(null);
+      return;
     }
+
+    // 2. Create a new row in the listings table
+    await createListing({
+      artwork_id: artwork.id,
+      price: type === "fixed" ? price : (startingBid ?? 0),
+      listing_type: type,
+      ...(type === "auction" && startingBid != null
+        ? { auction_starting_bid: startingBid }
+        : {}),
+      ...(type === "auction" && endDate ? { auction_end_date: endDate } : {}),
+    });
+
+    setListingId(null);
+    await loadArtworks();
+
+    // Close dialog if no more drafts remain
+    const remainingDrafts = listings.filter(
+      (a) => a.status === "draft" && a.id !== artwork.id,
+    );
+    if (remainingDrafts.length === 0) {
+      setIsListDialogOpen(false);
+    }
+  };
+
+  const handleTakeDown = async () => {
+    if (!takeDownId) return;
+    setIsTakingDown(true);
+    await takeDownListing(takeDownId);
+    setIsTakingDown(false);
+    setTakeDownId(null);
+    await loadArtworks();
   };
 
   const sellerStats = {
@@ -433,16 +476,29 @@ export default function SellingDashboard() {
                             0
                           ).toLocaleString()}
                         </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 bg-transparent"
-                          asChild
-                        >
-                          <Link href={`/artwork/${listing.id}/edit`}>
-                            Manage
-                          </Link>
-                        </Button>
+                        <div className="flex gap-2 mt-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-transparent"
+                            asChild
+                          >
+                            <Link href={`/artwork/${listing.id}/edit`}>
+                              Manage
+                            </Link>
+                          </Button>
+                          {listing.status === "listed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-transparent text-destructive hover:text-destructive border-destructive/40 hover:bg-destructive/5"
+                              onClick={() => setTakeDownId(listing.id)}
+                            >
+                              <XCircle className="h-3.5 w-3.5 mr-1" />
+                              Take Down
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   );
@@ -452,6 +508,28 @@ export default function SellingDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Take Down Confirm Dialog */}
+      <Dialog open={!!takeDownId} onOpenChange={(open) => { if (!open) setTakeDownId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Take Down Listing?</DialogTitle>
+            <DialogDescription>
+              This will remove the artwork from the marketplace and revert it to
+              a draft. You can relist it at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setTakeDownId(null)} disabled={isTakingDown}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleTakeDown} disabled={isTakingDown}>
+              {isTakingDown ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+              Take Down
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* List New Artwork Dialog */}
       <Dialog open={isListDialogOpen} onOpenChange={setIsListDialogOpen}>
@@ -472,51 +550,134 @@ export default function SellingDashboard() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[55vh] overflow-y-auto">
-              {draftArtworks.map((artwork) => (
-                <div
-                  key={artwork.id}
-                  className="flex items-center gap-3 rounded-lg border bg-card p-3"
-                >
-                  <img
-                    src={artwork.imageUrl || "/placeholder.svg"}
-                    alt={artwork.title}
-                    className="h-14 w-14 rounded-md object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{artwork.title}</p>
-                    <div className="relative mt-1">
-                      <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Set price"
-                        className="h-8 pl-7 text-sm"
-                        value={
-                          listingPrices[artwork.id] ?? artwork.desiredPrice
-                        }
-                        onChange={(e) =>
-                          setListingPrices((prev) => ({
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {draftArtworks.map((artwork) => {
+                const type = listingTypes[artwork.id] ?? "fixed";
+                return (
+                  <div
+                    key={artwork.id}
+                    className="rounded-lg border bg-card p-3 space-y-3"
+                  >
+                    {/* Artwork header row */}
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={artwork.imageUrl || "/placeholder.svg"}
+                        alt={artwork.title}
+                        className="h-12 w-12 rounded-md object-cover shrink-0"
+                      />
+                      <p className="font-medium truncate flex-1">
+                        {artwork.title}
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => handleListArtwork(artwork)}
+                        disabled={listingId === artwork.id}
+                      >
+                        {listingId === artwork.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "List"
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Listing type toggle */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setListingTypes((prev) => ({
                             ...prev,
-                            [artwork.id]: e.target.value,
+                            [artwork.id]: "fixed",
                           }))
                         }
-                      />
+                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                          type === "fixed"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Tag className="h-3.5 w-3.5" />
+                        Buy Now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setListingTypes((prev) => ({
+                            ...prev,
+                            [artwork.id]: "auction",
+                          }))
+                        }
+                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-md border py-1.5 text-xs font-medium transition-colors ${
+                          type === "auction"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Gavel className="h-3.5 w-3.5" />
+                        Auction
+                      </button>
                     </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleListArtwork(artwork)}
-                    disabled={listingId === artwork.id}
-                  >
-                    {listingId === artwork.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+
+                    {/* Price fields */}
+                    {type === "fixed" ? (
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="Buy now price"
+                          className="h-8 pl-7 text-sm"
+                          value={
+                            listingPrices[artwork.id] ?? artwork.desiredPrice
+                          }
+                          onChange={(e) =>
+                            setListingPrices((prev) => ({
+                              ...prev,
+                              [artwork.id]: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
                     ) : (
-                      "List"
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="relative">
+                          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="Starting bid"
+                            className="h-8 pl-7 text-sm"
+                            value={auctionStartingBids[artwork.id] ?? ""}
+                            onChange={(e) =>
+                              setAuctionStartingBids((prev) => ({
+                                ...prev,
+                                [artwork.id]: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <Input
+                          type="date"
+                          className="h-8 text-sm"
+                          min={
+                            new Date(Date.now() + 86400000)
+                              .toISOString()
+                              .split("T")[0]
+                          }
+                          value={auctionEndDates[artwork.id] ?? ""}
+                          onChange={(e) =>
+                            setAuctionEndDates((prev) => ({
+                              ...prev,
+                              [artwork.id]: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
                     )}
-                  </Button>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
 

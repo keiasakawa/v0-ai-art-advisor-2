@@ -29,9 +29,19 @@ import {
   Clock,
   FileText,
   Award,
+  Trash2,
+  Loader2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
-import { getUserArtworks, createArtwork } from "@/app/actions/artwork";
+import { getUserArtworks, createArtwork, deleteArtwork } from "@/app/actions/artwork";
 
 const statusConfig = {
   draft: { label: "Draft", icon: Clock, color: "bg-gray-100 text-gray-700" },
@@ -76,6 +86,19 @@ export default function MyCollectionPage() {
     condition: "Excellent",
     status: "draft",
   });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
+    await deleteArtwork(deleteId);
+    setIsDeleting(false);
+    setDeleteId(null);
+    // Refresh collection
+    const result = await getUserArtworks();
+    if (result.success) setCollection(result.data.map(mapArtwork));
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -282,19 +305,29 @@ export default function MyCollectionPage() {
                                   ).toLocaleString()}
                                 </p>
                               )}
-                              <div className="flex gap-2 mt-3">
+                              <div className="flex gap-2 mt-3 flex-wrap">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="mt-2 bg-transparent"
+                                  className="bg-transparent"
                                   asChild
                                 >
                                   <Link href={`/artwork/${artwork.id}/edit`}>
                                     Manage
                                   </Link>
                                 </Button>
-                                <Button variant="outline" size="sm">
-                                  <Eye className="h-4 w-4" />
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link href={`/artwork/${artwork.id}`}>
+                                    <Eye className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="bg-transparent text-destructive hover:text-destructive border-destructive/40 hover:bg-destructive/5"
+                                  onClick={() => setDeleteId(artwork.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </div>
@@ -308,6 +341,28 @@ export default function MyCollectionPage() {
             </AnimatePresence>
           </div>
         )}
+
+        {/* Remove Artwork Confirm Dialog */}
+        <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Remove Artwork?</DialogTitle>
+              <DialogDescription>
+                This will permanently delete the artwork from your collection.
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDeleteId(null)} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                Remove
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* AI Advisor CTA */}
         <Card className="mt-8 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">

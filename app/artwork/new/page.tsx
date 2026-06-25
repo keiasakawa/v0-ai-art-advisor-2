@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { createArtwork, type ArtworkInsert } from "@/app/actions/artwork";
+import { createArtwork, uploadArtworkImage, type ArtworkInsert } from "@/app/actions/artwork";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -225,12 +225,19 @@ export default function NewArtworkPage() {
     setIsSubmitting(true);
 
     try {
-      // In production, you would upload images to storage first
-      // For now, we'll use a placeholder image URL
-      const imageUrl =
-        formData.images.length > 0
-          ? "/abstract-colorful-artwork.png"
-          : "/placeholder.svg";
+      // Upload primary image to Supabase Storage
+      let imageUrl = "/placeholder.svg"
+      if (formData.images.length > 0) {
+        const fd = new FormData()
+        fd.append("file", formData.images[0])
+        const uploadResult = await uploadArtworkImage(fd)
+        if (!uploadResult.success) {
+          setErrors({ submit: uploadResult.error || "Failed to upload image" })
+          setIsSubmitting(false)
+          return
+        }
+        imageUrl = uploadResult.url
+      }
 
       const artworkData: ArtworkInsert = {
         title: formData.title,
