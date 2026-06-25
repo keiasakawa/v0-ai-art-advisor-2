@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { getArtwork, updateArtwork, deleteArtwork, type ArtworkUpdate } from "@/app/actions/artwork"
+import { getArtwork, updateArtwork, deleteArtwork, uploadArtworkImage, type ArtworkUpdate } from "@/app/actions/artwork"
 
 interface ArtworkFormData {
   images: File[]
@@ -256,8 +256,19 @@ export default function EditArtworkPage() {
     setIsSubmitting(true)
 
     try {
-      // Prepare update data
-      const imageUrl = formData.existingImages[0] || (formData.images.length > 0 ? "/abstract-colorful-artwork.png" : "/placeholder.svg")
+      // Use existing image, or upload a new one if provided
+      let imageUrl = formData.existingImages[0] ?? "/placeholder.svg"
+      if (formData.images.length > 0) {
+        const fd = new FormData()
+        fd.append("file", formData.images[0])
+        const uploadResult = await uploadArtworkImage(fd)
+        if (!uploadResult.success) {
+          setErrors({ submit: uploadResult.error || "Failed to upload image" })
+          setIsSubmitting(false)
+          return
+        }
+        imageUrl = uploadResult.url
+      }
 
       const artworkData: ArtworkUpdate = {
         id: artworkId,

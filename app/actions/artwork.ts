@@ -152,6 +152,34 @@ export async function getListedArtworks() {
   return { success: true, data: artworks || [] }
 }
 
+export async function uploadArtworkImage(formData: FormData) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false as const, error: "Not authenticated" }
+
+  const file = formData.get("file") as File
+  if (!file) return { success: false as const, error: "No file provided" }
+
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg"
+  const filename = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  const { error } = await supabase.storage
+    .from("artwork-images")
+    .upload(filename, file, { contentType: file.type, upsert: false })
+
+  if (error) {
+    console.error("[uploadArtworkImage]", error.message)
+    return { success: false as const, error: error.message }
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("artwork-images")
+    .getPublicUrl(filename)
+
+  return { success: true as const, url: publicUrl }
+}
+
 export async function getArtworkWithListing(id: string) {
   const supabase = await createClient()
 
