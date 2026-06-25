@@ -138,6 +138,7 @@ export default async function PaymentPage({ params }: PageProps) {
                 artist={artwork.artist}
                 priceInCents={priceInCents}
                 imageUrl={artwork.image_url}
+                stripePublishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
               />
             </div>
           </div>
