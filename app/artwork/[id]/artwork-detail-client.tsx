@@ -262,19 +262,13 @@ export default function ArtworkDetailClient({ artwork, listing }: Props) {
 
           {/* Purchase Controls */}
           <div className="space-y-3">
-            {listing ? (
-              isAuction ? (
-                <Button size="lg" className="w-full">
-                  Place a Bid
-                </Button>
-              ) : (
-                <Button size="lg" className="w-full" asChild>
-                  <Link href={`/payment/${artwork.id}`}>Purchase</Link>
-                </Button>
-              )
+            {isAuction ? (
+              <Button size="lg" className="w-full">
+                Place a Bid
+              </Button>
             ) : (
-              <Button size="lg" className="w-full" disabled>
-                Not Available
+              <Button size="lg" className="w-full" asChild>
+                <Link href={`/payment/${artwork.id}`}>Buy Now</Link>
               </Button>
             )}
             <Button
