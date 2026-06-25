@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { createArtwork, type ArtworkInsert } from "@/app/actions/artwork";
+import { createArtwork, uploadArtworkImage, type ArtworkInsert } from "@/app/actions/artwork";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Upload,
   X,
+  Plus,
   ImageIcon,
   AlertCircle,
   ArrowLeft,
@@ -225,12 +226,19 @@ export default function NewArtworkPage() {
     setIsSubmitting(true);
 
     try {
-      // In production, you would upload images to storage first
-      // For now, we'll use a placeholder image URL
-      const imageUrl =
-        formData.images.length > 0
-          ? "/abstract-colorful-artwork.png"
-          : "/placeholder.svg";
+      // Upload primary image to Supabase Storage
+      let imageUrl = "/placeholder.svg"
+      if (formData.images.length > 0) {
+        const fd = new FormData()
+        fd.append("file", formData.images[0])
+        const uploadResult = await uploadArtworkImage(fd)
+        if (!uploadResult.success) {
+          setErrors({ submit: uploadResult.error || "Failed to upload image" })
+          setIsSubmitting(false)
+          return
+        }
+        imageUrl = uploadResult.url
+      }
 
       const artworkData: ArtworkInsert = {
         title: formData.title,
@@ -315,73 +323,77 @@ export default function NewArtworkPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {/* Upload Area */}
-                <div data-error={!!errors.images}>
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/jpg"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+
+              {/* Unified grid: thumbnails + add tile */}
+              <div className={`grid gap-3 ${imagePreviews.length === 0 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}`}>
+                {imagePreviews.map((preview, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative group aspect-square rounded-xl overflow-hidden border bg-muted"
+                  >
+                    <img
+                      src={preview || "/placeholder.svg"}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {index === 0 && (
+                      <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                        Primary
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </motion.div>
+                ))}
+
+                {/* Add tile */}
+                {imagePreviews.length < 10 && (
                   <label
                     htmlFor="image-upload"
                     className={`
-                      border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
-                      transition-all hover:border-primary hover:bg-muted/50
-                      ${errors.images ? "border-red-500 bg-red-50/50" : "border-border"}
+                      flex flex-col items-center justify-center gap-2 cursor-pointer rounded-xl border-2 border-dashed transition-colors
+                      hover:border-primary hover:bg-muted/50
+                      ${imagePreviews.length === 0 ? "py-12" : "aspect-square"}
+                      ${errors.images ? "border-destructive bg-destructive/5" : "border-border"}
                     `}
                   >
-                    <input
-                      id="image-upload"
-                      type="file"
-                      accept="image/jpeg,image/png,image/jpg"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                    <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="font-medium mb-1">
-                      Click to upload or drag and drop
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      PNG, JPG up to 10MB each (max 10 images)
-                    </p>
+                    {imagePreviews.length === 0 ? (
+                      <>
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <span className="font-medium text-sm">Click to upload or drag and drop</span>
+                        <span className="text-xs text-muted-foreground">PNG, JPG up to 10 MB each</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Add more</span>
+                      </>
+                    )}
                   </label>
-                  {errors.images && (
-                    <p className="text-sm text-red-600 flex items-center gap-1 mt-2">
-                      <AlertCircle className="h-4 w-4" />
-                      {errors.images}
-                    </p>
-                  )}
-                </div>
-
-                {/* Image Previews */}
-                {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="relative group aspect-square rounded-lg overflow-hidden border"
-                      >
-                        <img
-                          src={preview || "/placeholder.svg"}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        {index === 0 && (
-                          <Badge className="absolute top-2 left-2 bg-primary">
-                            Primary
-                          </Badge>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </motion.div>
-                    ))}
-                  </div>
                 )}
               </div>
+
+              {errors.images && (
+                <p className="text-sm text-destructive flex items-center gap-1 mt-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.images}
+                </p>
+              )}
             </CardContent>
           </Card>
 

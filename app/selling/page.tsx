@@ -27,6 +27,7 @@ import {
   Loader2,
   Gavel,
   Tag,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getUserArtworks, updateArtwork } from "@/app/actions/artwork";
-import { createListing } from "@/app/actions/listings";
+import { createListing, takeDownListing } from "@/app/actions/listings";
 
 interface Artwork {
   id: string;
@@ -130,6 +131,8 @@ export default function SellingDashboard() {
     Record<string, string>
   >({});
   const [listingId, setListingId] = useState<string | null>(null);
+  const [takeDownId, setTakeDownId] = useState<string | null>(null);
+  const [isTakingDown, setIsTakingDown] = useState(false);
 
   const loadArtworks = async () => {
     setIsLoadingArtworks(true);
@@ -193,6 +196,15 @@ export default function SellingDashboard() {
     if (remainingDrafts.length === 0) {
       setIsListDialogOpen(false);
     }
+  };
+
+  const handleTakeDown = async () => {
+    if (!takeDownId) return;
+    setIsTakingDown(true);
+    await takeDownListing(takeDownId);
+    setIsTakingDown(false);
+    setTakeDownId(null);
+    await loadArtworks();
   };
 
   const sellerStats = {
@@ -464,16 +476,29 @@ export default function SellingDashboard() {
                             0
                           ).toLocaleString()}
                         </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 bg-transparent"
-                          asChild
-                        >
-                          <Link href={`/artwork/${listing.id}/edit`}>
-                            Manage
-                          </Link>
-                        </Button>
+                        <div className="flex gap-2 mt-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-transparent"
+                            asChild
+                          >
+                            <Link href={`/artwork/${listing.id}/edit`}>
+                              Manage
+                            </Link>
+                          </Button>
+                          {listing.status === "listed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-transparent text-destructive hover:text-destructive border-destructive/40 hover:bg-destructive/5"
+                              onClick={() => setTakeDownId(listing.id)}
+                            >
+                              <XCircle className="h-3.5 w-3.5 mr-1" />
+                              Take Down
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   );
@@ -483,6 +508,28 @@ export default function SellingDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Take Down Confirm Dialog */}
+      <Dialog open={!!takeDownId} onOpenChange={(open) => { if (!open) setTakeDownId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Take Down Listing?</DialogTitle>
+            <DialogDescription>
+              This will remove the artwork from the marketplace and revert it to
+              a draft. You can relist it at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setTakeDownId(null)} disabled={isTakingDown}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleTakeDown} disabled={isTakingDown}>
+              {isTakingDown ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+              Take Down
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* List New Artwork Dialog */}
       <Dialog open={isListDialogOpen} onOpenChange={setIsListDialogOpen}>
