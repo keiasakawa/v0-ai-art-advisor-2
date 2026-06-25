@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
@@ -8,9 +8,6 @@ import {
 import { loadStripe } from '@stripe/stripe-js'
 
 import { startArtworkCheckoutSession } from '@/app/actions/stripe'
-
-const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null
 
 interface ArtworkCheckoutProps {
   artworkId: string
@@ -27,6 +24,11 @@ export default function ArtworkCheckout({
   priceInCents,
   imageUrl 
 }: ArtworkCheckoutProps) {
+  const stripePromise = useMemo(() => {
+    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    return key ? loadStripe(key) : null
+  }, [])
+
   const fetchClientSecret = useCallback(
     () => startArtworkCheckoutSession({ 
       artworkId, 
