@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
@@ -9,14 +9,13 @@ import { loadStripe } from '@stripe/stripe-js'
 
 import { startArtworkCheckoutSession } from '@/app/actions/stripe'
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
-
 interface ArtworkCheckoutProps {
   artworkId: string
   title: string
   artist: string
   priceInCents: number
   imageUrl?: string
+  stripePublishableKey?: string
 }
 
 export default function ArtworkCheckout({ 
@@ -24,8 +23,14 @@ export default function ArtworkCheckout({
   title, 
   artist, 
   priceInCents,
-  imageUrl 
+  imageUrl,
+  stripePublishableKey,
 }: ArtworkCheckoutProps) {
+  const stripePromise = useMemo(() => {
+    const key = stripePublishableKey ?? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    return key ? loadStripe(key) : null
+  }, [stripePublishableKey])
+
   const fetchClientSecret = useCallback(
     () => startArtworkCheckoutSession({ 
       artworkId, 
@@ -36,6 +41,16 @@ export default function ArtworkCheckout({
     }),
     [artworkId, title, artist, priceInCents, imageUrl]
   )
+
+  if (!stripePromise) {
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        Stripe is not configured. Add{' '}
+        <code className="font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to
+        your environment variables to enable checkout.
+      </div>
+    )
+  }
 
   return (
     <div id="checkout" className="w-full">

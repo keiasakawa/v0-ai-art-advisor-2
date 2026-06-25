@@ -152,6 +152,77 @@ export async function getListedArtworks() {
   return { success: true, data: artworks || [] }
 }
 
+export async function getArtworkWithListing(id: string) {
+  const supabase = await createClient()
+
+  // Fetch artwork row
+  const { data: artwork, error: artworkError } = await supabase
+    .from("artworks")
+    .select("*")
+    .eq("id", id)
+    .single()
+
+  if (artworkError || !artwork) {
+    return { success: false, error: artworkError?.message ?? "Not found" }
+  }
+
+  // Fetch most recent active listing (or most recently ended auction) for this artwork
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("*")
+    .eq("artwork_id", id)
+    .in("status", ["active", "ended"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser()
+  const currentUserId = user?.id ?? null
+
+  // For auction listings, fetch highest bid and bid count
+  let highestBid: { amount: number; bidder_id: string } | null = null
+  let bidCount = 0
+  let isAuctionEnded = false
+  let currentUserIsWinner = false
+
+  if (listing && listing.listing_type === "auction") {
+    const endDate = listing.auction_end_date ? new Date(listing.auction_end_date) : null
+    isAuctionEnded = endDate ? endDate < new Date() : false
+
+    const { data: topBid } = await supabase
+      .from("bids")
+      .select("amount, bidder_id")
+      .eq("listing_id", listing.id)
+      .order("amount", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const { count } = await supabase
+      .from("bids")
+      .select("id", { count: "exact", head: true })
+      .eq("listing_id", listing.id)
+
+    highestBid = topBid ?? null
+    bidCount = count ?? 0
+    currentUserIsWinner =
+      isAuctionEnded && !!currentUserId && highestBid?.bidder_id === currentUserId
+  }
+
+  return {
+    success: true,
+    data: {
+      artwork,
+      listing: listing ?? null,
+      highestBid,
+      bidCount,
+      isAuctionEnded,
+      currentUserId,
+      currentUserIsWinner,
+    },
+  }
+}
+
 export async function getUserArtworks() {
   const supabase = await createClient()
   
