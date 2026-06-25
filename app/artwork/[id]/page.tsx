@@ -16,7 +16,15 @@ export default async function ArtworkPage({ params }: PageProps) {
     notFound();
   }
 
-  const { artwork, listing } = result.data;
+  const {
+    artwork,
+    listing,
+    highestBid,
+    bidCount,
+    isAuctionEnded,
+    currentUserId,
+    currentUserIsWinner,
+  } = result.data;
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,7 +41,15 @@ export default async function ArtworkPage({ params }: PageProps) {
         </div>
       </div>
 
-      <ArtworkDetailClient artwork={artwork} listing={listing} />
+      <ArtworkDetailClient
+        artwork={artwork}
+        listing={listing}
+        highestBid={highestBid}
+        bidCount={bidCount}
+        isAuctionEnded={isAuctionEnded}
+        currentUserId={currentUserId}
+        currentUserIsWinner={currentUserIsWinner}
+      />
     </div>
   );
 }

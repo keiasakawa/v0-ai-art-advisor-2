@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Shield, Truck, RotateCcw } from "lucide-react"
+import { ArrowLeft, Shield, Truck, RotateCcw, Trophy } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -20,14 +20,29 @@ export default async function PaymentPage({ params }: PageProps) {
     notFound()
   }
 
-  const { artwork, listing } = result.data
+  const {
+    artwork,
+    listing,
+    highestBid,
+    isAuctionEnded,
+    currentUserId,
+    currentUserIsWinner,
+  } = result.data
 
-  // Determine price: prefer listing price, fall back to desired_price, then purchase_price
-  const rawPrice =
-    listing?.price ??
-    artwork.desired_price ??
-    artwork.purchase_price ??
-    0
+  const isAuction = listing?.listing_type === "auction"
+
+  // Block non-winners from purchasing ended auctions
+  if (isAuction && isAuctionEnded && !currentUserIsWinner) {
+    redirect(`/artwork/${artworkId}`)
+  }
+
+  // Determine price: for won auctions use winning bid; otherwise listing/desired/purchase price
+  const rawPrice = isAuction && isAuctionEnded && highestBid
+    ? highestBid.amount
+    : listing?.price ??
+      artwork.desired_price ??
+      artwork.purchase_price ??
+      0
 
   const priceInCents = Math.round(Number(rawPrice) * 100)
   const priceFormatted = new Intl.NumberFormat("en-US", {
@@ -52,6 +67,25 @@ export default async function PaymentPage({ params }: PageProps) {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold text-foreground mb-8">Complete Your Purchase</h1>
+
+          {/* Auction winner notice */}
+          {currentUserIsWinner && (
+            <div className="mb-8 flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-5 py-4">
+              <Trophy className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-900 dark:text-amber-200">
+                  You won this auction!
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Your winning bid of{" "}
+                  <span className="font-medium">
+                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(highestBid?.amount ?? 0))}
+                  </span>{" "}
+                  is shown below. Complete your purchase to claim the artwork.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="grid lg:grid-cols-2 gap-12">
             {/* Order Summary */}

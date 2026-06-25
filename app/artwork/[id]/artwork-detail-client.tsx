@@ -2,6 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Heart,
   Share2,
@@ -16,16 +24,20 @@ import {
   Facebook,
   Link2,
   ChevronLeft,
-  ChevronRight,
   Gavel,
   Tag,
   Clock,
+  Trophy,
+  DollarSign,
+  Loader2,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { EstimatedMarketValue } from "@/components/estimated-market-value";
 import { PriceHistory } from "@/components/price-history";
+import { placeBid } from "@/app/actions/bids";
 
 interface Artwork {
   id: string;
@@ -65,6 +77,11 @@ interface Listing {
 interface Props {
   artwork: Artwork;
   listing: Listing | null;
+  highestBid: { amount: number; bidder_id: string } | null;
+  bidCount: number;
+  isAuctionEnded: boolean;
+  currentUserId: string | null;
+  currentUserIsWinner: boolean;
 }
 
 function formatPrice(value: number | null | undefined): string {
@@ -81,23 +98,46 @@ function formatDate(dateStr: string | null | undefined): string {
   });
 }
 
-function daysUntil(dateStr: string | null | undefined): number | null {
+function timeUntil(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
   const diff = new Date(dateStr).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  if (diff <= 0) return "Ended";
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (days > 0) return `${days}d ${hours}h left`;
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${minutes}m left`;
 }
 
-export default function ArtworkDetailClient({ artwork, listing }: Props) {
+export default function ArtworkDetailClient({
+  artwork,
+  listing,
+  highestBid,
+  bidCount,
+  isAuctionEnded,
+  currentUserId,
+  currentUserIsWinner,
+}: Props) {
   const [isLiked, setIsLiked] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(0);
   const [showShipping, setShowShipping] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [alertCreated, setAlertCreated] = useState(false);
+  const [bidDialogOpen, setBidDialogOpen] = useState(false);
+  const [bidAmount, setBidAmount] = useState("");
+  const [bidError, setBidError] = useState<string | null>(null);
+  const [bidSuccess, setBidSuccess] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const isAuction = listing?.listing_type === "auction";
+  const isSeller = listing?.seller_id === currentUserId;
   const displayPrice = isAuction
-    ? listing?.auction_starting_bid
-    : listing?.price ?? artwork.desired_price;
+    ? (highestBid?.amount ?? listing?.auction_starting_bid)
+    : (listing?.price ?? artwork.desired_price);
+
+  const minimumBid = highestBid
+    ? Number(highestBid.amount) + 1
+    : Number(listing?.auction_starting_bid ?? 0);
 
   const editionLabel =
     artwork.edition && artwork.edition_number && artwork.edition_size
@@ -106,10 +146,72 @@ export default function ArtworkDetailClient({ artwork, listing }: Props) {
         ? "Limited Edition"
         : "Unique";
 
-  const auctionDays = daysUntil(listing?.auction_end_date);
+  const auctionTimeLeft = timeUntil(listing?.auction_end_date);
+
+  function handleBidOpen() {
+    setBidAmount(minimumBid.toString());
+    setBidError(null);
+    setBidSuccess(false);
+    setBidDialogOpen(true);
+  }
+
+  function handlePlaceBid() {
+    const amount = parseFloat(bidAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setBidError("Please enter a valid bid amount.");
+      return;
+    }
+    if (amount < minimumBid) {
+      setBidError(`Minimum bid is ${formatPrice(minimumBid)}.`);
+      return;
+    }
+    if (!listing) return;
+
+    startTransition(async () => {
+      const result = await placeBid({
+        listing_id: listing.id,
+        amount,
+        artwork_id: artwork.id,
+      });
+      if (result.success) {
+        setBidSuccess(true);
+        setBidError(null);
+      } else {
+        setBidError(result.error ?? "Failed to place bid.");
+      }
+    });
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
+      {/* Winner banner */}
+      {currentUserIsWinner && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 flex items-center justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-6 py-4"
+        >
+          <div className="flex items-center gap-3">
+            <Trophy className="h-6 w-6 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-900 dark:text-amber-200">
+                Congratulations — you won this auction!
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Your winning bid was{" "}
+                <span className="font-medium">
+                  {formatPrice(highestBid?.amount)}
+                </span>
+                . Complete your purchase below.
+              </p>
+            </div>
+          </div>
+          <Button asChild className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white">
+            <Link href={`/payment/${artwork.id}`}>Purchase Now</Link>
+          </Button>
+        </motion.div>
+      )}
+
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
         {/* Left Column - Artwork Image */}
         <motion.div
@@ -224,60 +326,102 @@ export default function ArtworkDetailClient({ artwork, listing }: Props) {
                 ) : (
                   <Tag className="h-3.5 w-3.5" />
                 )}
-                {isAuction ? "Auction" : "Buy Now"}
+                {isAuction ? (isAuctionEnded ? "Auction Ended" : "Live Auction") : "Buy Now"}
               </div>
             )}
           </div>
 
-          {/* Price */}
-          <div className="space-y-1">
+          {/* Price / Bid info */}
+          <div className="space-y-2">
             {isAuction ? (
               <>
-                <p className="text-sm text-muted-foreground">Starting bid</p>
-                <p className="text-2xl font-semibold">
-                  {formatPrice(listing?.auction_starting_bid)}
-                </p>
-                {listing?.auction_end_date && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                      Ends {formatDate(listing.auction_end_date)}
-                      {auctionDays !== null && (
-                        <span className="ml-1 text-amber-600 font-medium">
-                          ({auctionDays === 0 ? "today" : `${auctionDays}d left`})
-                        </span>
-                      )}
+                <div className="flex items-baseline gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                      {highestBid ? "Current bid" : "Starting bid"}
+                    </p>
+                    <p className="text-3xl font-semibold">
+                      {formatPrice(displayPrice)}
+                    </p>
+                  </div>
+                  {bidCount > 0 && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      {bidCount} {bidCount === 1 ? "bid" : "bids"}
+                    </div>
+                  )}
+                </div>
+                {!isAuctionEnded && listing?.auction_end_date && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Clock className="h-4 w-4 text-amber-500" />
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">
+                      {auctionTimeLeft}
+                    </span>
+                    <span className="text-muted-foreground">
+                      · ends {formatDate(listing.auction_end_date)}
                     </span>
                   </div>
                 )}
+                {isAuctionEnded && (
+                  <p className="text-sm text-muted-foreground">
+                    This auction has ended.
+                    {highestBid
+                      ? ` Final price: ${formatPrice(highestBid.amount)}`
+                      : " No bids were placed."}
+                  </p>
+                )}
               </>
             ) : (
-              <>
-                <p className="text-2xl font-semibold">
-                  {formatPrice(displayPrice)}
-                </p>
-              </>
+              <p className="text-3xl font-semibold">
+                {formatPrice(displayPrice)}
+              </p>
             )}
           </div>
 
           {/* Purchase Controls */}
           <div className="space-y-3">
             {isAuction ? (
-              <Button size="lg" className="w-full">
-                Place a Bid
-              </Button>
+              isAuctionEnded ? (
+                currentUserIsWinner ? (
+                  <Button size="lg" className="w-full bg-amber-600 hover:bg-amber-700 text-white" asChild>
+                    <Link href={`/payment/${artwork.id}`}>
+                      <Trophy className="h-4 w-4 mr-2" />
+                      Purchase Your Winning Artwork
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button size="lg" className="w-full" disabled>
+                    Auction Ended
+                  </Button>
+                )
+              ) : isSeller ? (
+                <Button size="lg" className="w-full" disabled>
+                  Your listing
+                </Button>
+              ) : !currentUserId ? (
+                <Button size="lg" className="w-full" asChild>
+                  <Link href="/login">Sign in to Bid</Link>
+                </Button>
+              ) : (
+                <Button size="lg" className="w-full" onClick={handleBidOpen}>
+                  <Gavel className="h-4 w-4 mr-2" />
+                  Place a Bid
+                </Button>
+              )
             ) : (
               <Button size="lg" className="w-full" asChild>
                 <Link href={`/payment/${artwork.id}`}>Buy Now</Link>
               </Button>
             )}
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full bg-transparent"
-            >
-              Make an Offer
-            </Button>
+            {!isAuction && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full bg-transparent"
+              >
+                Make an Offer
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
@@ -325,7 +469,7 @@ export default function ArtworkDetailClient({ artwork, listing }: Props) {
             <Button
               variant="outline"
               size="sm"
-              className={`gap-2 ${alertCreated ? "bg-green-50 border-green-200 text-green-700" : ""}`}
+              className={`gap-2 ${alertCreated ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400" : ""}`}
               onClick={() => setAlertCreated(!alertCreated)}
             >
               <Bell
@@ -439,11 +583,7 @@ export default function ArtworkDetailClient({ artwork, listing }: Props) {
               </div>
               <div className="grid grid-cols-[160px_1fr] gap-4 py-3 border-b">
                 <span className="text-muted-foreground">Certificate</span>
-                <span>
-                  {artwork.certificate
-                    ? "Included"
-                    : "Not included"}
-                </span>
+                <span>{artwork.certificate ? "Included" : "Not included"}</span>
               </div>
               {artwork.provenance && (
                 <div className="grid grid-cols-[160px_1fr] gap-4 py-3 border-b">
@@ -532,6 +672,117 @@ export default function ArtworkDetailClient({ artwork, listing }: Props) {
           <Link href="/chat">Chat with AI Advisor</Link>
         </Button>
       </motion.div>
+
+      {/* Place a Bid Dialog */}
+      <Dialog open={bidDialogOpen} onOpenChange={setBidDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gavel className="h-5 w-5" />
+              Place a Bid
+            </DialogTitle>
+            <DialogDescription>
+              {artwork.title} by {artwork.artist}
+            </DialogDescription>
+          </DialogHeader>
+
+          {bidSuccess ? (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center">
+                  <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-semibold">Bid placed successfully!</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your bid of{" "}
+                    <span className="font-medium text-foreground">
+                      ${parseFloat(bidAmount).toLocaleString()}
+                    </span>{" "}
+                    has been recorded. If you win, you will be notified and can
+                    complete your purchase here.
+                  </p>
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => setBidDialogOpen(false)}
+              >
+                Done
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              {/* Current bid info */}
+              <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {highestBid ? "Current highest bid" : "Starting bid"}
+                  </span>
+                  <span className="font-medium">
+                    {formatPrice(highestBid?.amount ?? listing?.auction_starting_bid)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Minimum bid</span>
+                  <span className="font-medium text-primary">
+                    {formatPrice(minimumBid)}
+                  </span>
+                </div>
+                {listing?.auction_end_date && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Time remaining</span>
+                    <span className="font-medium text-amber-600 dark:text-amber-400">
+                      {auctionTimeLeft}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bid input */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Your bid amount</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    min={minimumBid}
+                    step="1"
+                    className="pl-8"
+                    value={bidAmount}
+                    onChange={(e) => {
+                      setBidAmount(e.target.value);
+                      setBidError(null);
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handlePlaceBid()}
+                    placeholder={`${minimumBid}`}
+                  />
+                </div>
+                {bidError && (
+                  <p className="text-sm text-destructive">{bidError}</p>
+                )}
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={handlePlaceBid}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Gavel className="h-4 w-4 mr-2" />
+                )}
+                {isPending ? "Placing bid…" : `Bid ${bidAmount ? `$${parseFloat(bidAmount).toLocaleString()}` : ""}`}
+              </Button>
+
+              <p className="text-xs text-muted-foreground text-center">
+                By placing a bid you agree to purchase this artwork if you win.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
