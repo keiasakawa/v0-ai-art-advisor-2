@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Upload, X, Plus, ImageIcon, AlertCircle, ArrowLeft, Archive, Save } from "lucide-react"
+import { Upload, X, FileText, CheckCircle2, ImageIcon, AlertCircle, ArrowLeft, Archive, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import {
   AlertDialog,
@@ -57,17 +57,23 @@ interface ArtworkFormData {
 }
 
 // Helper to parse dimensions string
+// Handles "48 × 36 in", "48 x 36 in", "48 × 36 × 2 in", "48×36", etc.
 function parseDimensions(dimensions: string | null): { height: string; width: string; depth: string; unit: "cm" | "in" } {
   if (!dimensions) return { height: "", width: "", depth: "", unit: "in" }
   
-  // Try to parse "48 × 36 in" or "48 × 36 × 2 in" format
-  const match = dimensions.match(/^([\d.]+)\s*×\s*([\d.]+)(?:\s*×\s*([\d.]+))?\s*(in|cm)?$/i)
-  if (match) {
+  const sep = /[×xX*]/
+  // Extract unit at the end
+  const unitMatch = dimensions.match(/(in|cm)\s*$/i)
+  const unit = (unitMatch?.[1]?.toLowerCase() as "cm" | "in") ?? "in"
+  // Strip unit and split by separator
+  const parts = dimensions.replace(/(in|cm)\s*$/i, "").split(sep).map(p => p.trim()).filter(Boolean)
+  
+  if (parts.length >= 2) {
     return {
-      height: match[1] || "",
-      width: match[2] || "",
-      depth: match[3] || "",
-      unit: (match[4]?.toLowerCase() as "cm" | "in") || "in"
+      height: parts[0] || "",
+      width: parts[1] || "",
+      depth: parts[2] || "",
+      unit,
     }
   }
   return { height: "", width: "", depth: "", unit: "in" }
@@ -169,44 +175,29 @@ export default function EditArtworkPage() {
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
+    const file = e.target.files?.[0]
+    if (!file) return
 
-    const newFiles = Array.from(files)
-    const totalImages = formData.existingImages.length + formData.images.length + newFiles.length
-
-    if (totalImages > 10) {
-      setErrors({ ...errors, images: "Maximum 10 images allowed" })
+    if (file.size > 10 * 1024 * 1024) {
+      setErrors({ ...errors, images: "Image must be less than 10MB" })
       return
     }
 
-    const invalidFiles = newFiles.filter((file) => file.size > 10 * 1024 * 1024)
-    if (invalidFiles.length > 0) {
-      setErrors({ ...errors, images: "Each image must be less than 10MB" })
-      return
+    // Revoke previous new-image preview if any
+    if (formData.images.length > 0 && imagePreviews[imagePreviews.length - 1]) {
+      URL.revokeObjectURL(imagePreviews[imagePreviews.length - 1])
     }
 
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
-    setImagePreviews([...imagePreviews, ...newPreviews])
-    setFormData({ ...formData, images: [...formData.images, ...newFiles] })
+    const preview = URL.createObjectURL(file)
+    setImagePreviews([preview])
+    setFormData({ ...formData, images: [file], existingImages: [] })
     setErrors({ ...errors, images: "" })
   }
 
-  const removeExistingImage = (index: number) => {
-    const newExisting = formData.existingImages.filter((_, i) => i !== index)
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    setFormData({ ...formData, existingImages: newExisting })
-    setImagePreviews(newPreviews)
-  }
-
-  const removeNewImage = (index: number) => {
-    const existingCount = formData.existingImages.length
-    const newImageIndex = index - existingCount
-    const newImages = formData.images.filter((_, i) => i !== newImageIndex)
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    URL.revokeObjectURL(imagePreviews[index])
-    setImagePreviews(newPreviews)
-    setFormData({ ...formData, images: newImages })
+  const removeImage = () => {
+    if (formData.images[0]) URL.revokeObjectURL(imagePreviews[0])
+    setImagePreviews([])
+    setFormData({ ...formData, images: [], existingImages: [] })
   }
 
   const handleInvoiceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -393,69 +384,54 @@ export default function EditArtworkPage() {
                 id="image-upload"
                 type="file"
                 accept="image/jpeg,image/png,image/jpg"
-                multiple
                 onChange={handleImageUpload}
                 className="hidden"
+                value=""
               />
 
-              {/* Unified grid: thumbnails + add tile */}
-              <div className={`grid gap-3 ${imagePreviews.length === 0 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}`}>
-                {imagePreviews.map((preview, index) => {
-                  const isExisting = index < formData.existingImages.length
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="relative group aspect-square rounded-xl overflow-hidden border bg-muted"
+              {imagePreviews[0] ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-2"
+                >
+                  <div className="w-full aspect-video rounded-xl overflow-hidden border bg-muted">
+                    <img
+                      src={imagePreviews[0]}
+                      alt="Artwork preview"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <label
+                      htmlFor="image-upload"
+                      className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted transition-colors"
                     >
-                      <img
-                        src={preview || "/placeholder.svg"}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      {index === 0 && (
-                        <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
-                          Primary
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => (isExisting ? removeExistingImage(index) : removeNewImage(index - formData.existingImages.length))}
-                        className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </motion.div>
-                  )
-                })}
-
-                {/* Add tile */}
-                {imagePreviews.length < 10 && (
-                  <label
-                    htmlFor="image-upload"
-                    className={`
-                      flex flex-col items-center justify-center gap-2 cursor-pointer rounded-xl border-2 border-dashed transition-colors
-                      hover:border-primary hover:bg-muted/50
-                      ${imagePreviews.length === 0 ? "py-12" : "aspect-square"}
-                      ${errors.images ? "border-destructive bg-destructive/5" : "border-border"}
-                    `}
-                  >
-                    {imagePreviews.length === 0 ? (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <span className="font-medium text-sm">Click to upload or drag and drop</span>
-                        <span className="text-xs text-muted-foreground">PNG, JPG up to 10 MB each</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Add more</span>
-                      </>
-                    )}
-                  </label>
-                )}
-              </div>
+                      <Upload className="h-4 w-4 text-muted-foreground" />
+                      Replace Image
+                    </label>
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-destructive/40 bg-background text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                      Remove
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <label
+                  htmlFor="image-upload"
+                  className={`flex flex-col items-center justify-center gap-3 py-14 cursor-pointer rounded-xl border-2 border-dashed transition-colors hover:border-primary hover:bg-muted/50 ${errors.images ? "border-destructive bg-destructive/5" : "border-border"}`}
+                >
+                  <Upload className="h-9 w-9 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="font-medium text-sm">Click to upload</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG up to 10 MB</p>
+                  </div>
+                </label>
+              )}
 
               {errors.images && (
                 <p className="text-sm text-destructive flex items-center gap-1 mt-2">
