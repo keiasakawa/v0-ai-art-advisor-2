@@ -16,28 +16,34 @@ import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, isLoading, needsRoleSelection } = useAuth()
+  const { login, needsRoleSelection } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setIsSubmitting(true)
 
-    const result = await login(email, password)
+    try {
+      const result = await login(email, password)
 
-    if (!result.success) {
-      setError(result.error || "Login failed")
-      return
-    }
+      if (!result.success) {
+        setError(result.error || "Login failed")
+        return
+      }
 
-    // Redirect based on role selection needs
-    if (needsRoleSelection) {
-      router.push("/select-role")
-    } else {
-      router.push("/dashboard")
+      // Redirect based on role selection needs
+      if (needsRoleSelection) {
+        router.push("/select-role")
+      } else {
+        router.push("/dashboard")
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -53,12 +59,17 @@ export default function LoginPage() {
     setEmail(account.email)
     setPassword(account.password)
     setError("")
-    
-    const result = await login(account.email, account.password)
-    if (result.success) {
-      router.push(needsRoleSelection ? "/select-role" : "/dashboard")
-    } else {
-      setError(`Demo account not set up. Please sign up with your own email or contact support.`)
+    setIsSubmitting(true)
+
+    try {
+      const result = await login(account.email, account.password)
+      if (result.success) {
+        router.push(needsRoleSelection ? "/select-role" : "/dashboard")
+      } else {
+        setError(`Demo account not set up. Please sign up with your own email or contact support.`)
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -129,8 +140,8 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Signing in..." : "Sign in"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
@@ -147,7 +158,7 @@ export default function LoginPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => loginAs("buyer")}
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="justify-start"
               >
                 <span className="flex h-6 w-6 items-center justify-center rounded bg-blue-100 text-blue-600 text-xs font-medium mr-2">
@@ -159,7 +170,7 @@ export default function LoginPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => loginAs("seller")}
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="justify-start"
               >
                 <span className="flex h-6 w-6 items-center justify-center rounded bg-green-100 text-green-600 text-xs font-medium mr-2">
@@ -171,7 +182,7 @@ export default function LoginPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => loginAs("curator")}
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="justify-start"
               >
                 <span className="flex h-6 w-6 items-center justify-center rounded bg-purple-100 text-purple-600 text-xs font-medium mr-2">
