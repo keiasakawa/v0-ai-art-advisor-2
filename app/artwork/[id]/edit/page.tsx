@@ -205,12 +205,12 @@ export default function EditArtworkPage() {
     setImagePreviews(newPreviews)
   }
 
-  const removeNewImage = (index: number) => {
+  const removeNewImage = (previewIndex: number) => {
     const existingCount = formData.existingImages.length
-    const newImageIndex = index - existingCount
+    const newImageIndex = previewIndex - existingCount
     const newImages = formData.images.filter((_, i) => i !== newImageIndex)
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    URL.revokeObjectURL(imagePreviews[index])
+    const newPreviews = imagePreviews.filter((_, i) => i !== previewIndex)
+    URL.revokeObjectURL(imagePreviews[previewIndex])
     setImagePreviews(newPreviews)
     setFormData({ ...formData, images: newImages })
   }
@@ -402,6 +402,7 @@ export default function EditArtworkPage() {
                 multiple
                 onChange={handleImageUpload}
                 className="hidden"
+                value=""
               />
 
               {/* Unified grid: thumbnails + add tile */}
@@ -427,7 +428,7 @@ export default function EditArtworkPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => (isExisting ? removeExistingImage(index) : removeNewImage(index - formData.existingImages.length))}
+                        onClick={() => (isExisting ? removeExistingImage(index) : removeNewImage(index))}
                         className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="h-3.5 w-3.5" />

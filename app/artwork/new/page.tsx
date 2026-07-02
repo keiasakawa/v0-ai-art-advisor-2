@@ -332,6 +332,7 @@ export default function NewArtworkPage() {
                 multiple
                 onChange={handleImageUpload}
                 className="hidden"
+                value=""
               />
 
               {/* Unified grid: thumbnails + add tile */}
