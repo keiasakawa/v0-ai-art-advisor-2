@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Upload, X, Plus, ImageIcon, AlertCircle, ArrowLeft, Archive, Save } from "lucide-react"
+import { Upload, X, Plus, FileText, CheckCircle2, ImageIcon, AlertCircle, ArrowLeft, Archive, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import {
   AlertDialog,
