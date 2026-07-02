@@ -57,17 +57,23 @@ interface ArtworkFormData {
 }
 
 // Helper to parse dimensions string
+// Handles "48 × 36 in", "48 x 36 in", "48 × 36 × 2 in", "48×36", etc.
 function parseDimensions(dimensions: string | null): { height: string; width: string; depth: string; unit: "cm" | "in" } {
   if (!dimensions) return { height: "", width: "", depth: "", unit: "in" }
   
-  // Try to parse "48 × 36 in" or "48 × 36 × 2 in" format
-  const match = dimensions.match(/^([\d.]+)\s*×\s*([\d.]+)(?:\s*×\s*([\d.]+))?\s*(in|cm)?$/i)
-  if (match) {
+  const sep = /[×xX*]/
+  // Extract unit at the end
+  const unitMatch = dimensions.match(/(in|cm)\s*$/i)
+  const unit = (unitMatch?.[1]?.toLowerCase() as "cm" | "in") ?? "in"
+  // Strip unit and split by separator
+  const parts = dimensions.replace(/(in|cm)\s*$/i, "").split(sep).map(p => p.trim()).filter(Boolean)
+  
+  if (parts.length >= 2) {
     return {
-      height: match[1] || "",
-      width: match[2] || "",
-      depth: match[3] || "",
-      unit: (match[4]?.toLowerCase() as "cm" | "in") || "in"
+      height: parts[0] || "",
+      width: parts[1] || "",
+      depth: parts[2] || "",
+      unit,
     }
   }
   return { height: "", width: "", depth: "", unit: "in" }
