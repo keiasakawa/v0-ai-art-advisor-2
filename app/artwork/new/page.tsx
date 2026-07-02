@@ -31,6 +31,7 @@ import {
   Upload,
   X,
   Plus,
+  FileText,
   ImageIcon,
   AlertCircle,
   ArrowLeft,
