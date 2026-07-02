@@ -324,27 +324,29 @@ export default function NewArtworkPage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="relative group w-full aspect-video rounded-xl overflow-hidden border bg-muted"
+                  className="space-y-2"
                 >
-                  <img
-                    src={imagePreviews[0]}
-                    alt="Artwork preview"
-                    className="w-full h-full object-contain"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                  <div className="w-full aspect-video rounded-xl overflow-hidden border bg-muted">
+                    <img
+                      src={imagePreviews[0]}
+                      alt="Artwork preview"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="flex gap-2">
                     <label
                       htmlFor="image-upload"
-                      className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-sm font-medium hover:bg-white transition-colors"
+                      className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted transition-colors"
                     >
-                      <Upload className="h-3.5 w-3.5" />
-                      Replace
+                      <Upload className="h-4 w-4 text-muted-foreground" />
+                      Replace Image
                     </label>
                     <button
                       type="button"
                       onClick={removeImage}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-sm font-medium hover:bg-white transition-colors text-destructive"
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-destructive/40 bg-background text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-4 w-4" />
                       Remove
                     </button>
                   </div>
