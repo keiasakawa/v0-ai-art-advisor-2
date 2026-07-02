@@ -164,15 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Supabase is not configured" };
     }
 
-    setIsLoading(true);
-
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      setIsLoading(false);
       return { success: false, error: error.message };
     }
 
@@ -187,7 +184,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setIsLoading(false);
     return { success: true };
   };
 
