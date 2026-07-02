@@ -32,6 +32,7 @@ import {
   X,
   Plus,
   FileText,
+  CheckCircle2,
   ImageIcon,
   AlertCircle,
   ArrowLeft,
