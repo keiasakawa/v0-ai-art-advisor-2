@@ -30,7 +30,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Upload,
   X,
-  Plus,
   FileText,
   CheckCircle2,
   ImageIcon,
@@ -144,39 +143,26 @@ export default function NewArtworkPage() {
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const newFiles = Array.from(files);
-    const totalImages = formData.images.length + newFiles.length;
-
-    if (totalImages > 10) {
-      setErrors({ ...errors, images: "Maximum 10 images allowed" });
+    if (file.size > 10 * 1024 * 1024) {
+      setErrors({ ...errors, images: "Image must be less than 10MB" });
       return;
     }
 
-    // Validate file size (10MB max per file)
-    const invalidFiles = newFiles.filter(
-      (file) => file.size > 10 * 1024 * 1024,
-    );
-    if (invalidFiles.length > 0) {
-      setErrors({ ...errors, images: "Each image must be less than 10MB" });
-      return;
-    }
+    // Revoke previous preview URL if any
+    if (imagePreviews[0]) URL.revokeObjectURL(imagePreviews[0]);
 
-    // Create previews
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-    setImagePreviews([...imagePreviews, ...newPreviews]);
-    setFormData({ ...formData, images: [...formData.images, ...newFiles] });
+    setImagePreviews([URL.createObjectURL(file)]);
+    setFormData({ ...formData, images: [file] });
     setErrors({ ...errors, images: "" });
   };
 
-  const removeImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    URL.revokeObjectURL(imagePreviews[index]);
-    setImagePreviews(newPreviews);
-    setFormData({ ...formData, images: newImages });
+  const removeImage = () => {
+    if (imagePreviews[0]) URL.revokeObjectURL(imagePreviews[0]);
+    setImagePreviews([]);
+    setFormData({ ...formData, images: [] });
   };
 
   const handleInvoiceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,67 +315,52 @@ export default function NewArtworkPage() {
                 id="image-upload"
                 type="file"
                 accept="image/jpeg,image/png,image/jpg"
-                multiple
                 onChange={handleImageUpload}
                 className="hidden"
                 value=""
               />
 
-              {/* Unified grid: thumbnails + add tile */}
-              <div className={`grid gap-3 ${imagePreviews.length === 0 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}`}>
-                {imagePreviews.map((preview, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="relative group aspect-square rounded-xl overflow-hidden border bg-muted"
-                  >
-                    <img
-                      src={preview || "/placeholder.svg"}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    {index === 0 && (
-                      <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
-                        Primary
-                      </span>
-                    )}
+              {imagePreviews[0] ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="relative group w-full aspect-video rounded-xl overflow-hidden border bg-muted"
+                >
+                  <img
+                    src={imagePreviews[0]}
+                    alt="Artwork preview"
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                    <label
+                      htmlFor="image-upload"
+                      className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-sm font-medium hover:bg-white transition-colors"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      Replace
+                    </label>
                     <button
                       type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={removeImage}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-sm font-medium hover:bg-white transition-colors text-destructive"
                     >
                       <X className="h-3.5 w-3.5" />
+                      Remove
                     </button>
-                  </motion.div>
-                ))}
-
-                {/* Add tile */}
-                {imagePreviews.length < 10 && (
-                  <label
-                    htmlFor="image-upload"
-                    className={`
-                      flex flex-col items-center justify-center gap-2 cursor-pointer rounded-xl border-2 border-dashed transition-colors
-                      hover:border-primary hover:bg-muted/50
-                      ${imagePreviews.length === 0 ? "py-12" : "aspect-square"}
-                      ${errors.images ? "border-destructive bg-destructive/5" : "border-border"}
-                    `}
-                  >
-                    {imagePreviews.length === 0 ? (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <span className="font-medium text-sm">Click to upload or drag and drop</span>
-                        <span className="text-xs text-muted-foreground">PNG, JPG up to 10 MB each</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Add more</span>
-                      </>
-                    )}
-                  </label>
-                )}
-              </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <label
+                  htmlFor="image-upload"
+                  className={`flex flex-col items-center justify-center gap-3 py-14 cursor-pointer rounded-xl border-2 border-dashed transition-colors hover:border-primary hover:bg-muted/50 ${errors.images ? "border-destructive bg-destructive/5" : "border-border"}`}
+                >
+                  <Upload className="h-9 w-9 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="font-medium text-sm">Click to upload</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG up to 10 MB</p>
+                  </div>
+                </label>
+              )}
 
               {errors.images && (
                 <p className="text-sm text-destructive flex items-center gap-1 mt-2">
