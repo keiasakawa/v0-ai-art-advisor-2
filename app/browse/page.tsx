@@ -97,6 +97,12 @@ export default function BrowsePage() {
   const [showFilters, setShowFilters] = useState(false);
   const [savedArtworks, setSavedArtworks] = useState<string[]>([]);
 
+  const toggleSave = (id: string) => {
+    setSavedArtworks((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    );
+  };
+
   const categories = [
     "All",
     ...Array.from(new Set(artworks.map((a) => a.category))).sort(),
@@ -132,9 +138,6 @@ export default function BrowsePage() {
       const matchesCategory = category === "All" || art.category === category;
       const matchesPrice =
         art.price >= priceRange[0] && art.price <= priceRange[1];
-      console.log(
-        `Filtering "${art.title}" by ${art.artist}: search=${matchesSearch}, category=${matchesCategory}, price=${matchesPrice}`,
-      );
       return matchesSearch && matchesCategory && matchesPrice;
     })
     .sort((a, b) => {
@@ -277,7 +280,7 @@ export default function BrowsePage() {
                 />
               </Badge>
             )}
-            {(priceRange[0] > 0 || priceRange[1] < maxPrice1) && (
+            {(priceRange[0] > 0 || priceRange[1] < maxPrice) && (
               <Badge variant="secondary" className="gap-1">
                 ${priceRange[0].toLocaleString()} - $
                 {priceRange[1].toLocaleString()}
