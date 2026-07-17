@@ -24,23 +24,46 @@ interface Message {
   timestamp: Date;
 }
 
+const WELCOME_MESSAGE = "Hello! I'm your AI Art Advisor. I can help you discover artworks, learn about artists, understand art movements, and guide your collecting journey. What would you like to know about art today?";
+
+function defaultWelcome(): Message {
+  return { id: "1", role: "assistant", content: WELCOME_MESSAGE, timestamp: new Date() };
+}
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q");
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "Hello! I'm your AI Art Advisor. I can help you discover artworks, learn about artists, understand art movements, and guide your collecting journey. What would you like to know about art today?",
-      timestamp: new Date(),
-    },
-  ]);
+  const STORAGE_KEY = "chat_messages";
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === "undefined") return [defaultWelcome()];
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Array<Omit<Message, "timestamp"> & { timestamp: string }>;
+        return parsed.map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
+      }
+    } catch {
+      // ignore malformed data
+    }
+    return [defaultWelcome()];
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const initialQueryProcessed = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Persist messages to sessionStorage on every change
+  useEffect(() => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
+
+  const clearHistory = () => {
+    sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem("conversationId");
+    setMessages([defaultWelcome()]);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -171,12 +194,17 @@ export default function ChatPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
             <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-semibold">AI Art Advisor</h1>
             <p className="text-sm text-muted-foreground">
               Expert guidance for collectors
             </p>
           </div>
+          {messages.length > 1 && (
+            <Button variant="ghost" size="sm" onClick={clearHistory} className="text-muted-foreground">
+              Clear chat
+            </Button>
+          )}
         </div>
       </header>
 
