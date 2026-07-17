@@ -51,14 +51,31 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (initialQuery && !initialQueryProcessed) {
-      setInitialQueryProcessed(true);
-      const timer = setTimeout(() => {
-        submitMessage(initialQuery);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [initialQuery, initialQueryProcessed]);
+    if (!initialQuery || initialQueryProcessed) return;
+    setInitialQueryProcessed(true);
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: initialQuery.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    getResponse(initialQuery.trim()).then((response) => {
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: response.message,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+      setIsLoading(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getSimulatedResponse = (userInput: string): string => {
     const input = userInput.toLowerCase();
@@ -99,10 +116,7 @@ export default function ChatPage() {
 
   const getResponse = async (userInput: string): Promise<ChatResponse> => {
     const conversationId = sessionStorage.getItem("conversationId") || "";
-    console.log("User input:", userInput);
     const res = await sendChatMessage(userInput, conversationId);
-
-    console.log("AI response:", res);
 
     if (!conversationId) {
       sessionStorage.setItem("conversationId", res.conversationId || "");
@@ -126,14 +140,12 @@ export default function ChatPage() {
     setIsLoading(true);
 
     getResponse(userMessage.content).then((response) => {
-      console.log("Received response from API:", response);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: response.message,
         timestamp: new Date(),
       };
-      console.log("Simulated AI response:", aiMessage);
       setMessages((prev) => [...prev, aiMessage]);
       setIsLoading(false);
     });
