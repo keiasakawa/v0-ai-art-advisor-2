@@ -39,7 +39,7 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [initialQueryProcessed, setInitialQueryProcessed] = useState(false);
+  const initialQueryProcessed = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -51,8 +51,8 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (!initialQuery || initialQueryProcessed) return;
-    setInitialQueryProcessed(true);
+    if (!initialQuery || initialQueryProcessed.current) return;
+    initialQueryProcessed.current = true;
 
     const userMessage: Message = {
       id: Date.now().toString(),
