@@ -18,6 +18,7 @@ export interface ArtworkInsert {
   condition?: string
   description?: string
   image_url?: string
+  image_urls?: string[]
   status?: string
   signed?: boolean
   edition?: boolean

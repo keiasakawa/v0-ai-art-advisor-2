@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Upload, X, FileText, CheckCircle2, ImageIcon, AlertCircle, ArrowLeft, Archive, Save } from "lucide-react"
+import { Upload, X, Plus, FileText, CheckCircle2, ImageIcon, AlertCircle, ArrowLeft, Archive, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import {
   AlertDialog,
@@ -129,9 +129,14 @@ export default function EditArtworkPage() {
       const artwork = result.data
       const dims = parseDimensions(artwork.dimensions)
       
+      // Prefer image_urls array; fall back to image_url for older records
+      const existingImgs: string[] = (artwork as any).image_urls?.length
+        ? (artwork as any).image_urls
+        : artwork.image_url ? [artwork.image_url] : []
+      setImagePreviews(existingImgs)
       setFormData({
         images: [],
-        existingImages: artwork.image_url ? [artwork.image_url] : [],
+        existingImages: existingImgs,
         title: artwork.title || "",
         artist: artwork.artist || "",
         height: dims.height,
@@ -153,7 +158,6 @@ export default function EditArtworkPage() {
         condition: artwork.condition || "",
         additionalNotes: artwork.additional_notes || "",
       })
-      setImagePreviews(artwork.image_url ? [artwork.image_url] : [])
       setDataLoaded(true)
     }
 
@@ -175,29 +179,35 @@ export default function EditArtworkPage() {
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
 
-    if (file.size > 10 * 1024 * 1024) {
-      setErrors({ ...errors, images: "Image must be less than 10MB" })
+    const total = formData.existingImages.length + formData.images.length
+    const remaining = 10 - total
+    const toAdd = files.slice(0, remaining)
+
+    const oversized = toAdd.find((f) => f.size > 10 * 1024 * 1024)
+    if (oversized) {
+      setErrors({ ...errors, images: "Each image must be less than 10 MB" })
       return
     }
 
-    // Revoke previous new-image preview if any
-    if (formData.images.length > 0 && imagePreviews[imagePreviews.length - 1]) {
-      URL.revokeObjectURL(imagePreviews[imagePreviews.length - 1])
-    }
-
-    const preview = URL.createObjectURL(file)
-    setImagePreviews([preview])
-    setFormData({ ...formData, images: [file], existingImages: [] })
+    const newPreviews = toAdd.map((f) => URL.createObjectURL(f))
+    setImagePreviews([...imagePreviews, ...newPreviews])
+    setFormData({ ...formData, images: [...formData.images, ...toAdd] })
     setErrors({ ...errors, images: "" })
   }
 
-  const removeImage = () => {
-    if (formData.images[0]) URL.revokeObjectURL(imagePreviews[0])
-    setImagePreviews([])
-    setFormData({ ...formData, images: [], existingImages: [] })
+  const removeImage = (index: number) => {
+    const isExisting = index < formData.existingImages.length
+    if (!isExisting) URL.revokeObjectURL(imagePreviews[index])
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index))
+    if (isExisting) {
+      setFormData({ ...formData, existingImages: formData.existingImages.filter((_, i) => i !== index) })
+    } else {
+      const newIdx = index - formData.existingImages.length
+      setFormData({ ...formData, images: formData.images.filter((_, i) => i !== newIdx) })
+    }
   }
 
   const handleInvoiceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -247,19 +257,21 @@ export default function EditArtworkPage() {
     setIsSubmitting(true)
 
     try {
-      // Use existing image, or upload a new one if provided
-      let imageUrl = formData.existingImages[0] ?? "/placeholder.svg"
-      if (formData.images.length > 0) {
+      // Upload any new images, then combine with kept existing URLs
+      const uploadedUrls: string[] = []
+      for (const file of formData.images) {
         const fd = new FormData()
-        fd.append("file", formData.images[0])
+        fd.append("file", file)
         const uploadResult = await uploadArtworkImage(fd)
         if (!uploadResult.success) {
           setErrors({ submit: uploadResult.error || "Failed to upload image" })
           setIsSubmitting(false)
           return
         }
-        imageUrl = uploadResult.url
+        uploadedUrls.push(uploadResult.url)
       }
+      const allImageUrls = [...formData.existingImages, ...uploadedUrls]
+      const imageUrl = allImageUrls[0] ?? "/placeholder.svg"
 
       const artworkData: ArtworkUpdate = {
         id: artworkId,
@@ -276,6 +288,7 @@ export default function EditArtworkPage() {
         condition: formData.condition || undefined,
         description: formData.additionalNotes || undefined,
         image_url: imageUrl,
+        image_urls: allImageUrls,
         signed: formData.signed === "yes",
         edition: formData.edition === "yes",
         edition_number: formData.editionNumber || undefined,
@@ -384,43 +397,13 @@ export default function EditArtworkPage() {
                 id="image-upload"
                 type="file"
                 accept="image/jpeg,image/png,image/jpg"
+                multiple
                 onChange={handleImageUpload}
                 className="hidden"
                 value=""
               />
 
-              {imagePreviews[0] ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="space-y-2"
-                >
-                  <div className="w-full aspect-video rounded-xl overflow-hidden border bg-muted">
-                    <img
-                      src={imagePreviews[0]}
-                      alt="Artwork preview"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <label
-                      htmlFor="image-upload"
-                      className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted transition-colors"
-                    >
-                      <Upload className="h-4 w-4 text-muted-foreground" />
-                      Replace Image
-                    </label>
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-destructive/40 bg-background text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                      Remove
-                    </button>
-                  </div>
-                </motion.div>
-              ) : (
+              {imagePreviews.length === 0 ? (
                 <label
                   htmlFor="image-upload"
                   className={`flex flex-col items-center justify-center gap-3 py-14 cursor-pointer rounded-xl border-2 border-dashed transition-colors hover:border-primary hover:bg-muted/50 ${errors.images ? "border-destructive bg-destructive/5" : "border-border"}`}
@@ -428,9 +411,44 @@ export default function EditArtworkPage() {
                   <Upload className="h-9 w-9 text-muted-foreground" />
                   <div className="text-center">
                     <p className="font-medium text-sm">Click to upload</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG up to 10 MB</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG up to 10 MB · Up to 10 images</p>
                   </div>
                 </label>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <motion.div
+                      key={preview}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="relative group aspect-square rounded-lg overflow-hidden border bg-muted"
+                    >
+                      <img src={preview} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
+                      {index === 0 && (
+                        <span className="absolute bottom-0 inset-x-0 text-center text-[10px] font-semibold py-0.5 bg-primary/80 text-primary-foreground">
+                          Primary
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 p-0.5 rounded-full bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </motion.div>
+                  ))}
+
+                  {imagePreviews.length < 10 && (
+                    <label
+                      htmlFor="image-upload"
+                      className="aspect-square flex flex-col items-center justify-center gap-1 cursor-pointer rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-muted/50 transition-colors"
+                    >
+                      <Plus className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-[11px] text-muted-foreground">Add</span>
+                    </label>
+                  )}
+                </div>
               )}
 
               {errors.images && (
