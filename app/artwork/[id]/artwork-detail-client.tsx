@@ -24,6 +24,7 @@ import {
   Facebook,
   Link2,
   ChevronLeft,
+  ChevronRight,
   Gavel,
   Tag,
   Clock,
@@ -54,6 +55,7 @@ interface Artwork {
   condition: string | null;
   description: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
   status: string | null;
   signed: boolean | null;
   edition: boolean | null;
@@ -119,6 +121,15 @@ export default function ArtworkDetailClient({
   currentUserId,
   currentUserIsWinner,
 }: Props) {
+  // Build the full image list: prefer image_urls array, fall back to image_url
+  const allImages: string[] =
+    artwork.image_urls && artwork.image_urls.length > 0
+      ? artwork.image_urls
+      : artwork.image_url
+        ? [artwork.image_url]
+        : ["/placeholder.svg"];
+
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [showShipping, setShowShipping] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -220,15 +231,62 @@ export default function ArtworkDetailClient({
           transition={{ duration: 0.5 }}
           className="space-y-4"
         >
-          <div className="relative aspect-[4/5] overflow-hidden rounded-lg border bg-muted">
+          {/* Main image */}
+          <div className="relative aspect-[4/5] overflow-hidden rounded-lg border bg-muted group">
             <img
-              src={artwork.image_url || "/placeholder.svg"}
-              alt={artwork.title}
-              className="h-full w-full object-contain"
+              src={allImages[activeIndex]}
+              alt={`${artwork.title} — image ${activeIndex + 1}`}
+              className="h-full w-full object-contain transition-opacity duration-200"
               loading="lazy"
             />
             <div className="absolute inset-0 bg-muted animate-pulse -z-10" />
+
+            {/* Prev / Next arrows */}
+            {allImages.length > 1 && (
+              <>
+                <button
+                  onClick={() => setActiveIndex((i) => (i - 1 + allImages.length) % allImages.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-background/80 border shadow-sm hover:bg-background transition-colors opacity-0 group-hover:opacity-100"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setActiveIndex((i) => (i + 1) % allImages.length)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-background/80 border shadow-sm hover:bg-background transition-colors opacity-0 group-hover:opacity-100"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                {/* Dot indicators */}
+                <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+                  {allImages.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveIndex(i)}
+                      className={`h-1.5 rounded-full transition-all ${i === activeIndex ? "w-4 bg-foreground" : "w-1.5 bg-foreground/40"}`}
+                      aria-label={`Go to image ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
+
+          {/* Thumbnail strip */}
+          {allImages.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {allImages.map((src, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveIndex(i)}
+                  className={`flex-none w-16 h-16 rounded-md overflow-hidden border-2 transition-colors ${i === activeIndex ? "border-foreground" : "border-transparent hover:border-muted-foreground/40"}`}
+                >
+                  <img src={src} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-6 py-4">
             <button

@@ -36,7 +36,6 @@ export default function LoginPage() {
         return
       }
 
-      // Redirect based on role selection needs
       if (needsRoleSelection) {
         router.push("/select-role")
       } else {
@@ -66,7 +65,7 @@ export default function LoginPage() {
       if (result.success) {
         router.push(needsRoleSelection ? "/select-role" : "/dashboard")
       } else {
-        setError(`Demo account not set up. Please sign up with your own email or contact support.`)
+        setError(result.error || "Demo account not set up. Please sign up with your own email or contact support.")
       }
     } finally {
       setIsSubmitting(false)
