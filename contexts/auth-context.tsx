@@ -104,35 +104,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // If Supabase is not configured, just set loading to false
     if (!supabase) {
       setIsLoading(false);
       return;
     }
 
-    // Check current session on mount
-    const initAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        setSupabaseUser(session.user);
-        const profile = await fetchProfile(session.user);
-        setUser(profile);
-
-        // Check if user needs role selection (no roles set)
-        if (!profile?.roles || profile.roles.length === 0) {
-          setNeedsRoleSelection(true);
-        }
-      }
-
-      setIsLoading(false);
-    };
-
-    initAuth();
-
-    // Listen for auth state changes
+    // onAuthStateChange fires immediately with INITIAL_SESSION on mount —
+    // this is the single source of truth for session state. We do NOT call
+    // getSession() separately because it returns cached (possibly stale) data
+    // and creates a race condition with the listener.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -149,6 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setNeedsRoleSelection(false);
       }
+
+      // Mark loading done after the first event (INITIAL_SESSION or SIGNED_IN)
+      setIsLoading(false);
     });
 
     return () => {

@@ -23,27 +23,13 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const loginWithTimeout = async (
-    emailVal: string,
-    passwordVal: string,
-    fallbackError: string,
-  ): Promise<{ success: boolean; error?: string }> => {
-    const timeout = new Promise<{ success: false; error: string }>((resolve) =>
-      setTimeout(
-        () => resolve({ success: false, error: "Sign in timed out. Please try again." }),
-        5000,
-      ),
-    )
-    return Promise.race([login(emailVal, passwordVal), timeout])
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsSubmitting(true)
 
     try {
-      const result = await loginWithTimeout(email, password, "Login failed")
+      const result = await login(email, password)
 
       if (!result.success) {
         setError(result.error || "Login failed")
@@ -75,11 +61,7 @@ export default function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const result = await loginWithTimeout(
-        account.email,
-        account.password,
-        "Demo account not set up. Please sign up with your own email or contact support.",
-      )
+      const result = await login(account.email, account.password)
       if (result.success) {
         router.push(needsRoleSelection ? "/select-role" : "/dashboard")
       } else {
