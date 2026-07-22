@@ -147,26 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Supabase is not configured" };
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    if (data.user) {
-      setSupabaseUser(data.user);
-      const profile = await fetchProfile(data.user);
-      setUser(profile);
-
-      // If user has multiple roles, they may need to select one
-      if (profile && profile.roles.length > 1) {
-        setNeedsRoleSelection(true);
-      }
-    }
-
+    // onAuthStateChange handles all state updates — do nothing here
     return { success: true };
   };
 
@@ -179,45 +166,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: "Supabase is not configured" };
     }
 
-    setIsLoading(true);
+    const redirectUrl =
+      process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+      `${window.location.origin}/auth/callback`;
 
-    // Build the redirect URL - use the v0 proxy URL if available, otherwise use origin
-    const redirectUrl = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL 
-      || `${window.location.origin}/auth/callback`
-
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: {
-          name,
-        },
+        data: { name },
       },
     });
 
     if (error) {
-      setIsLoading(false);
       return { success: false, error: error.message };
     }
 
-    if (data.user) {
-      setSupabaseUser(data.user);
-      // The profile will be created by the database trigger
-      // For now, create a temporary user object
-      const newUser: User = {
-        id: data.user.id,
-        name,
-        email,
-        roles: [],
-        activeRole: "collector_buyer",
-        createdAt: new Date(),
-      };
-      setUser(newUser);
-      setNeedsRoleSelection(true);
-    }
-
-    setIsLoading(false);
+    // onAuthStateChange handles state updates after sign-up
+    setNeedsRoleSelection(true);
     return { success: true };
   };
 
@@ -225,9 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (supabase) {
       await supabase.auth.signOut();
     }
-    setUser(null);
-    setSupabaseUser(null);
-    setNeedsRoleSelection(false);
+    // onAuthStateChange fires SIGNED_OUT and clears all state
   };
 
   const selectRole = async (role: UserRole) => {
