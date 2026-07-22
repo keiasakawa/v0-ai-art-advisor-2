@@ -217,21 +217,22 @@ export default function NewArtworkPage() {
     setIsSubmitting(true);
 
     try {
-      // Upload all images to Supabase Storage
-      let imageUrl = "/placeholder.svg"
-      const imageUrls: string[] = []
-      for (const file of formData.images) {
-        const fd = new FormData()
-        fd.append("file", file)
-        const uploadResult = await uploadArtworkImage(fd)
-        if (!uploadResult.success) {
-          setErrors({ submit: uploadResult.error || "Failed to upload image" })
-          setIsSubmitting(false)
-          return
-        }
-        imageUrls.push(uploadResult.url)
+      // Upload all images in parallel
+      const uploadResults = await Promise.all(
+        formData.images.map((file) => {
+          const fd = new FormData()
+          fd.append("file", file)
+          return uploadArtworkImage(fd)
+        })
+      )
+      const failedUpload = uploadResults.find((r) => !r.success)
+      if (failedUpload) {
+        setErrors({ submit: (failedUpload as any).error || "Failed to upload image" })
+        setIsSubmitting(false)
+        return
       }
-      if (imageUrls.length > 0) imageUrl = imageUrls[0]
+      const imageUrls = uploadResults.map((r) => (r as any).url as string)
+      const imageUrl = imageUrls[0] ?? "/placeholder.svg"
 
       const artworkData: ArtworkInsert = {
         title: formData.title,

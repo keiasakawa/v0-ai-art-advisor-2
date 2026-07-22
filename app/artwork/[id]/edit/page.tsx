@@ -257,19 +257,21 @@ export default function EditArtworkPage() {
     setIsSubmitting(true)
 
     try {
-      // Upload any new images, then combine with kept existing URLs
-      const uploadedUrls: string[] = []
-      for (const file of formData.images) {
-        const fd = new FormData()
-        fd.append("file", file)
-        const uploadResult = await uploadArtworkImage(fd)
-        if (!uploadResult.success) {
-          setErrors({ submit: uploadResult.error || "Failed to upload image" })
-          setIsSubmitting(false)
-          return
-        }
-        uploadedUrls.push(uploadResult.url)
+      // Upload any new images in parallel, then combine with kept existing URLs
+      const uploadResults = await Promise.all(
+        formData.images.map((file) => {
+          const fd = new FormData()
+          fd.append("file", file)
+          return uploadArtworkImage(fd)
+        })
+      )
+      const failedUpload = uploadResults.find((r) => !r.success)
+      if (failedUpload) {
+        setErrors({ submit: (failedUpload as any).error || "Failed to upload image" })
+        setIsSubmitting(false)
+        return
       }
+      const uploadedUrls = uploadResults.map((r) => (r as any).url as string)
       const allImageUrls = [...formData.existingImages, ...uploadedUrls]
       const imageUrl = allImageUrls[0] ?? "/placeholder.svg"
 
