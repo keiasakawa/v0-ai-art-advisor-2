@@ -28,22 +28,16 @@ export default function LoginPage() {
     setError("")
     setIsSubmitting(true)
 
-    try {
-      const result = await login(email, password)
+    const result = await login(email, password)
 
-      if (!result.success) {
-        setError(result.error || "Login failed")
-        return
-      }
-
-      if (needsRoleSelection) {
-        router.push("/select-role")
-      } else {
-        router.push("/dashboard")
-      }
-    } finally {
+    if (!result.success) {
+      setError(result.error || "Login failed")
       setIsSubmitting(false)
+      return
     }
+
+    // Keep button in submitting state while navigation completes
+    router.push(needsRoleSelection ? "/select-role" : "/dashboard")
   }
 
   // Demo account buttons - these use real Supabase accounts
@@ -60,14 +54,12 @@ export default function LoginPage() {
     setError("")
     setIsSubmitting(true)
 
-    try {
-      const result = await login(account.email, account.password)
-      if (result.success) {
-        router.push(needsRoleSelection ? "/select-role" : "/dashboard")
-      } else {
-        setError(result.error || "Demo account not set up. Please sign up with your own email or contact support.")
-      }
-    } finally {
+    const result = await login(account.email, account.password)
+    if (result.success) {
+      // Keep button in submitting state while navigation completes
+      router.push(needsRoleSelection ? "/select-role" : "/dashboard")
+    } else {
+      setError(result.error || "Demo account not set up. Please sign up with your own email or contact support.")
       setIsSubmitting(false)
     }
   }
