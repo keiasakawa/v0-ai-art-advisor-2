@@ -3,6 +3,73 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+/**
+ * Called after a successful payment (fixed-price or auction winner).
+ * Marks the listing as "sold" and the artwork as "sold" so no one else can purchase it.
+ */
+export async function markListingAsSold(artworkId: string) {
+  const supabase = await createClient();
+
+  const { error: listingError } = await supabase
+    .from("listings")
+    .update({ status: "sold" })
+    .eq("artwork_id", artworkId)
+    .in("status", ["active", "ended"]);
+
+  if (listingError) {
+    console.error("[markListingAsSold listing]", listingError.message);
+    return { success: false, error: listingError.message };
+  }
+
+  const { error: artworkError } = await supabase
+    .from("artworks")
+    .update({ status: "sold", updated_at: new Date().toISOString() })
+    .eq("id", artworkId);
+
+  if (artworkError) {
+    console.error("[markListingAsSold artwork]", artworkError.message);
+    return { success: false, error: artworkError.message };
+  }
+
+  revalidatePath(`/artwork/${artworkId}`);
+  revalidatePath("/selling");
+  revalidatePath("/browse");
+  return { success: true };
+}
+
+/**
+ * Called when an auction expires with no bids.
+ * Marks the listing as "ended" and the artwork back to "draft" so it can be relisted.
+ */
+export async function markAuctionNoSale(listingId: number, artworkId: string) {
+  const supabase = await createClient();
+
+  const { error: listingError } = await supabase
+    .from("listings")
+    .update({ status: "ended" })
+    .eq("id", listingId)
+    .eq("status", "active");
+
+  if (listingError) {
+    console.error("[markAuctionNoSale listing]", listingError.message);
+    return { success: false, error: listingError.message };
+  }
+
+  const { error: artworkError } = await supabase
+    .from("artworks")
+    .update({ status: "draft", updated_at: new Date().toISOString() })
+    .eq("id", artworkId);
+
+  if (artworkError) {
+    console.error("[markAuctionNoSale artwork]", artworkError.message);
+    return { success: false, error: artworkError.message };
+  }
+
+  revalidatePath(`/artwork/${artworkId}`);
+  revalidatePath("/selling");
+  return { success: true };
+}
+
 export async function takeDownListing(artworkId: string) {
   const supabase = await createClient();
 

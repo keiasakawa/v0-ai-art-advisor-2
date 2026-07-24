@@ -374,17 +374,25 @@ export default function ArtworkDetailClient({
             {listing && (
               <div
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
-                  isAuction
+                  artwork.status === "sold"
+                    ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                    : isAuction
                     ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
                     : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
                 }`}
               >
-                {isAuction ? (
+                {artwork.status === "sold" ? (
+                  <Tag className="h-3.5 w-3.5" />
+                ) : isAuction ? (
                   <Gavel className="h-3.5 w-3.5" />
                 ) : (
                   <Tag className="h-3.5 w-3.5" />
                 )}
-                {isAuction ? (isAuctionEnded ? "Auction Ended" : "Live Auction") : "Buy Now"}
+                {artwork.status === "sold"
+                  ? "Sold"
+                  : isAuction
+                  ? isAuctionEnded ? "Auction Ended" : "Live Auction"
+                  : "Buy Now"}
               </div>
             )}
           </div>
@@ -438,7 +446,11 @@ export default function ArtworkDetailClient({
 
           {/* Purchase Controls */}
           <div className="space-y-3">
-            {isAuction ? (
+            {artwork.status === "sold" ? (
+              <Button size="lg" className="w-full" disabled>
+                This artwork has been sold
+              </Button>
+            ) : isAuction ? (
               isAuctionEnded ? (
                 currentUserIsWinner ? (
                   <Button size="lg" className="w-full bg-amber-600 hover:bg-amber-700 text-white" asChild>
@@ -471,7 +483,7 @@ export default function ArtworkDetailClient({
                 <Link href={`/payment/${artwork.id}`}>Buy Now</Link>
               </Button>
             )}
-            {!isAuction && (
+            {!isAuction && artwork.status !== "sold" && (
               <Button
                 size="lg"
                 variant="outline"
