@@ -76,6 +76,7 @@ export function Navigation() {
   const handleLogout = async () => {
     await logout();
     router.push("/");
+    router.refresh();
   };
 
   const handleSwitchRole = (role: UserRole) => {

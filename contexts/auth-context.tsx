@@ -189,10 +189,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Clear state immediately so UI reflects logout without waiting for the listener
+    setUser(null);
+    setSupabaseUser(null);
+    setNeedsRoleSelection(false);
     if (supabase) {
       await supabase.auth.signOut();
     }
-    // onAuthStateChange fires SIGNED_OUT and clears all state
   };
 
   const selectRole = async (role: UserRole) => {
