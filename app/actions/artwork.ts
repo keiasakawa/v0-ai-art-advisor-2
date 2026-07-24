@@ -236,6 +236,19 @@ export async function getArtworkWithListing(id: string) {
     bidCount = count ?? 0
     currentUserIsWinner =
       isAuctionEnded && !!currentUserId && highestBid?.bidder_id === currentUserId
+
+    // Auto-close expired auctions that received no bids
+    if (isAuctionEnded && !highestBid && listing.status === "active") {
+      await supabase
+        .from("listings")
+        .update({ status: "ended" })
+        .eq("id", listing.id)
+      await supabase
+        .from("artworks")
+        .update({ status: "draft", updated_at: new Date().toISOString() })
+        .eq("id", id)
+      listing.status = "ended"
+    }
   }
 
   return {

@@ -7,6 +7,7 @@ import { CheckCircle, Package, Mail, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getCheckoutSessionStatus } from "@/app/actions/stripe";
+import { markListingAsSold } from "@/app/actions/listings";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
@@ -21,13 +22,20 @@ function PaymentSuccessContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (sessionId) {
-      getCheckoutSessionStatus(sessionId)
-        .then(setStatus)
-        .finally(() => setIsLoading(false));
-    } else {
+    if (!sessionId) {
       setIsLoading(false);
+      return;
     }
+    getCheckoutSessionStatus(sessionId).then(async (result) => {
+      setStatus(result);
+      // Mark the artwork and listing as sold once payment is confirmed
+      if (
+        (result.status === "complete" || result.paymentStatus === "paid") &&
+        result.artworkId
+      ) {
+        await markListingAsSold(result.artworkId);
+      }
+    }).finally(() => setIsLoading(false));
   }, [sessionId]);
 
   if (isLoading) {
