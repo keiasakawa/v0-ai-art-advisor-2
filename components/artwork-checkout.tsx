@@ -17,7 +17,6 @@ interface ArtworkCheckoutProps {
   artist: string
   priceInCents: number
   imageUrl?: string
-  stripePublishableKey?: string
 }
 
 export default function ArtworkCheckout({ 
@@ -26,15 +25,14 @@ export default function ArtworkCheckout({
   artist, 
   priceInCents,
   imageUrl,
-  stripePublishableKey,
 }: ArtworkCheckoutProps) {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
 
   const stripePromise = useMemo(() => {
-    const key = stripePublishableKey ?? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
     return key ? loadStripe(key) : null
-  }, [stripePublishableKey])
+  }, [])
 
   const fetchClientSecret = useCallback(
     () => startArtworkCheckoutSession({ 
