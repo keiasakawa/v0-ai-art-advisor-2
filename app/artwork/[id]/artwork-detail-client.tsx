@@ -39,6 +39,7 @@ import { useState, useTransition } from "react";
 import { EstimatedMarketValue } from "@/components/estimated-market-value";
 import { PriceHistory } from "@/components/price-history";
 import { placeBid } from "@/app/actions/bids";
+import { markListingAsSold, markAuctionNoSale } from "@/app/actions/listings";
 
 interface Artwork {
   id: string;
@@ -139,6 +140,7 @@ export default function ArtworkDetailClient({
   const [bidError, setBidError] = useState<string | null>(null);
   const [bidSuccess, setBidSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isMocking, setIsMocking] = useState(false);
 
   const isAuction = listing?.listing_type === "auction";
   const isSeller = listing?.seller_id === currentUserId;
@@ -443,6 +445,42 @@ export default function ArtworkDetailClient({
               </p>
             )}
           </div>
+
+          {/* Dev-only mock controls — auction simulation */}
+          {process.env.NODE_ENV === "development" && isAuction && listing && !isAuctionEnded && artwork.status !== "sold" && (
+            <div className="rounded-lg border border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+                Dev — Mock Auction End
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-950/40 text-xs"
+                  disabled={isMocking}
+                  onClick={async () => {
+                    setIsMocking(true);
+                    await markAuctionNoSale(listing.id, artwork.id);
+                    window.location.reload();
+                  }}
+                >
+                  {isMocking ? <Loader2 className="h-3 w-3 animate-spin" /> : "End — No Sale"}
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                  disabled={isMocking}
+                  onClick={async () => {
+                    setIsMocking(true);
+                    await markListingAsSold(artwork.id);
+                    window.location.reload();
+                  }}
+                >
+                  {isMocking ? <Loader2 className="h-3 w-3 animate-spin" /> : "End — Sold"}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Purchase Controls */}
           <div className="space-y-3">
