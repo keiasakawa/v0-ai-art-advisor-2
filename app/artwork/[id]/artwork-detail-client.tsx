@@ -461,8 +461,14 @@ export default function ArtworkDetailClient({
                   disabled={isMocking}
                   onClick={async () => {
                     setIsMocking(true);
-                    await markAuctionNoSale(listing.id, artwork.id);
-                    window.location.reload();
+                    try {
+                      const result = await markAuctionNoSale(listing.id, artwork.id);
+                      console.log("[v0] markAuctionNoSale result:", result);
+                      window.location.reload();
+                    } catch (err) {
+                      console.error("[v0] markAuctionNoSale error:", err);
+                      setIsMocking(false);
+                    }
                   }}
                 >
                   {isMocking ? <Loader2 className="h-3 w-3 animate-spin" /> : "End — No Sale"}
@@ -473,8 +479,14 @@ export default function ArtworkDetailClient({
                   disabled={isMocking}
                   onClick={async () => {
                     setIsMocking(true);
-                    await markListingAsSold(artwork.id);
-                    window.location.reload();
+                    try {
+                      const result = await markListingAsSold(artwork.id);
+                      console.log("[v0] markListingAsSold result:", result);
+                      window.location.reload();
+                    } catch (err) {
+                      console.error("[v0] markListingAsSold error:", err);
+                      setIsMocking(false);
+                    }
                   }}
                 >
                   {isMocking ? <Loader2 className="h-3 w-3 animate-spin" /> : "End — Sold"}
