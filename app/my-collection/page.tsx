@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,8 @@ import {
   Award,
   Trash2,
   Loader2,
+  ShoppingBag,
+  CalendarDays,
 } from "lucide-react";
 import {
   Dialog,
@@ -42,6 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { getUserArtworks, createArtwork, deleteArtwork } from "@/app/actions/artwork";
+import { getPurchases } from "@/app/actions/listings";
 
 const statusConfig = {
   draft: { label: "Draft", icon: Clock, color: "bg-gray-100 text-gray-700" },
@@ -78,6 +82,7 @@ export default function MyCollectionPage() {
   const router = useRouter();
   const { user, isAuthenticated, hasRole, isLoading } = useAuth();
   const [collection, setCollection] = useState<any[]>([]);
+  const [purchases, setPurchases] = useState<any[]>([]);
   const [isLoadingArtworks, setIsLoadingArtworks] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -106,9 +111,15 @@ export default function MyCollectionPage() {
     } else if (isAuthenticated) {
       const loadArtworks = async () => {
         setIsLoadingArtworks(true);
-        const result = await getUserArtworks();
-        if (result.success) {
-          setCollection(result.data.map(mapArtwork));
+        const [artworksResult, purchasesResult] = await Promise.all([
+          getUserArtworks(),
+          getPurchases(),
+        ]);
+        if (artworksResult.success) {
+          setCollection(artworksResult.data.map(mapArtwork));
+        }
+        if (purchasesResult.success) {
+          setPurchases(purchasesResult.data);
         }
         setIsLoadingArtworks(false);
       };
@@ -200,6 +211,26 @@ export default function MyCollectionPage() {
           </Card>
         </div>
 
+        {/* Tabs */}
+        <Tabs defaultValue="artworks">
+          <TabsList className="mb-6">
+            <TabsTrigger value="artworks" className="gap-2">
+              <Package className="h-4 w-4" />
+              My Artworks
+              {collection.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{collection.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="purchased" className="gap-2">
+              <ShoppingBag className="h-4 w-4" />
+              Purchased
+              {purchases.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{purchases.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="artworks">
         {/* Collection Grid */}
         {isLoadingArtworks ? (
           <Card className="text-center py-12">
@@ -341,6 +372,109 @@ export default function MyCollectionPage() {
             </AnimatePresence>
           </div>
         )}
+
+          </TabsContent>
+
+          {/* Purchased artworks tab */}
+          <TabsContent value="purchased">
+            {isLoadingArtworks ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <div className="h-8 w-8 mx-auto mb-4 rounded-full border-2 border-muted border-t-primary animate-spin" />
+                  <p className="text-muted-foreground">Loading purchases...</p>
+                </CardContent>
+              </Card>
+            ) : purchases.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No purchases yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Artworks you buy will appear here.
+                  </p>
+                  <Button asChild>
+                    <Link href="/browse">
+                      Browse Artworks
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                <AnimatePresence>
+                  {purchases.map((purchase, index) => {
+                    const artwork = purchase.artworks;
+                    if (!artwork) return null;
+                    return (
+                      <motion.div
+                        key={purchase.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                          <div className="flex flex-col sm:flex-row">
+                            <div className="sm:w-48 shrink-0">
+                              <img
+                                src={artwork.image_url || "/placeholder.svg"}
+                                alt={artwork.title}
+                                className="h-48 sm:h-full w-full object-cover"
+                              />
+                            </div>
+                            <CardContent className="flex-1 p-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="font-semibold truncate">{artwork.title}</h3>
+                                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 shrink-0">
+                                      <CheckCircle2 className="mr-1 h-3 w-3" />
+                                      Purchased
+                                    </Badge>
+                                  </div>
+                                  <p className="text-muted-foreground">{artwork.artist}{artwork.year ? `, ${artwork.year}` : ""}</p>
+                                  {artwork.medium && (
+                                    <p className="text-sm text-muted-foreground mt-1">{artwork.medium}</p>
+                                  )}
+                                  <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
+                                    <CalendarDays className="h-3.5 w-3.5" />
+                                    <span>
+                                      Acquired{" "}
+                                      {new Date(purchase.created_at).toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                        timeZone: "UTC",
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="text-lg font-bold">
+                                    ${Number(purchase.amount_paid).toLocaleString()}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground capitalize">{purchase.purchase_type}</p>
+                                  <div className="flex gap-2 mt-3">
+                                    <Button variant="outline" size="sm" asChild>
+                                      <Link href={`/artwork/${artwork.id}`}>
+                                        <Eye className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Remove Artwork Confirm Dialog */}
         <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>

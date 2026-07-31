@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getUserArtworks, updateArtwork } from "@/app/actions/artwork";
-import { createListing, takeDownListing } from "@/app/actions/listings";
+import { createListing, takeDownListing, getSellerSales } from "@/app/actions/listings";
 
 interface Artwork {
   id: string;
@@ -133,12 +133,26 @@ export default function SellingDashboard() {
   const [listingId, setListingId] = useState<string | null>(null);
   const [takeDownId, setTakeDownId] = useState<string | null>(null);
   const [isTakingDown, setIsTakingDown] = useState(false);
+  const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [dismissedSales, setDismissedSales] = useState<Set<string>>(new Set());
 
   const loadArtworks = async () => {
     setIsLoadingArtworks(true);
-    const result = await getUserArtworks();
-    if (result.success) {
-      setListings(result.data.map(mapArtwork));
+    const [artworksResult, salesResult] = await Promise.all([
+      getUserArtworks(),
+      getSellerSales(),
+    ]);
+    if (artworksResult.success) {
+      setListings(artworksResult.data.map(mapArtwork));
+    }
+    if (salesResult.success) {
+      // Show sales from last 7 days
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      setRecentSales(
+        salesResult.data.filter(
+          (s: any) => new Date(s.created_at) > sevenDaysAgo,
+        ),
+      );
     }
     setIsLoadingArtworks(false);
   };
@@ -277,8 +291,66 @@ export default function SellingDashboard() {
           <Button size="lg" onClick={() => setIsListDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             List New Artwork
+            {/* Sold notification badges */}
+            {recentSales.filter((s) => !dismissedSales.has(s.id)).length > 0 && (
+              <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                {recentSales.filter((s) => !dismissedSales.has(s.id)).length}
+              </span>
+            )}
           </Button>
         </div>
+
+        {/* Recent sale notifications */}
+        {recentSales.filter((s) => !dismissedSales.has(s.id)).length > 0 && (
+          <div className="mb-6 space-y-2">
+            {recentSales
+              .filter((s) => !dismissedSales.has(s.id))
+              .map((sale) => (
+                <motion.div
+                  key={sale.id}
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                >
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/30">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
+                        <DollarSign className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <span className="font-medium text-emerald-800 dark:text-emerald-200">
+                          {sale.artworks?.title ?? "Your artwork"} sold
+                        </span>
+                        <span className="text-emerald-700 dark:text-emerald-300">
+                          {" "}for{" "}
+                          <span className="font-semibold">
+                            ${Number(sale.amount_paid).toLocaleString()}
+                          </span>
+                        </span>
+                        <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">
+                          {new Date(sale.created_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            timeZone: "UTC",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 rounded-full p-0 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+                      onClick={() =>
+                        setDismissedSales((prev) => new Set([...prev, sale.id]))
+                      }
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
