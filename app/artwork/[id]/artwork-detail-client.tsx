@@ -98,6 +98,7 @@ function formatDate(dateStr: string | null | undefined): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
@@ -612,7 +613,7 @@ export default function ArtworkDetailClient({
                         {
                           date: new Date(listing.created_at).toLocaleDateString(
                             "en-US",
-                            { month: "short", year: "numeric" },
+                            { month: "short", year: "numeric", timeZone: "UTC" },
                           ),
                           event: isAuction ? "Auction Listed" : "Listed",
                           price:
@@ -628,7 +629,7 @@ export default function ArtworkDetailClient({
                     {
                       date: new Date(listing.created_at).toLocaleDateString(
                         "en-US",
-                        { month: "short", year: "numeric" },
+                        { month: "short", year: "numeric", timeZone: "UTC" },
                       ),
                       event: isAuction ? "Auction Listed" : "Listed",
                       price:
