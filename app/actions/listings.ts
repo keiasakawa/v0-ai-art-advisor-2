@@ -5,10 +5,21 @@ import { revalidatePath } from "next/cache";
 
 /**
  * Called after a successful payment (fixed-price or auction winner).
- * Marks the listing as "sold" and the artwork as "sold" so no one else can purchase it.
+ * Marks the listing as "sold", the artwork as "sold", and records the purchase.
  */
-export async function markListingAsSold(artworkId: string) {
+export async function markListingAsSold(
+  artworkId: string,
+  opts?: { stripeSessionId?: string; amountPaid?: number; purchaseType?: string },
+) {
   const supabase = await createClient();
+
+  // Fetch the listing so we can record its price and id
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("id, price, auction_starting_bid, listing_type")
+    .eq("artwork_id", artworkId)
+    .in("status", ["active", "ended"])
+    .maybeSingle();
 
   const { error: listingError } = await supabase
     .from("listings")
@@ -31,9 +42,33 @@ export async function markListingAsSold(artworkId: string) {
     return { success: false, error: artworkError.message };
   }
 
+  // Record the purchase for the buyer
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user && listing) {
+    const amountPaid =
+      opts?.amountPaid ??
+      (listing.listing_type === "auction"
+        ? listing.auction_starting_bid
+        : listing.price) ??
+      0;
+
+    await supabase.from("purchases").insert({
+      buyer_id: user.id,
+      artwork_id: artworkId,
+      listing_id: listing.id,
+      amount_paid: amountPaid,
+      stripe_session_id: opts?.stripeSessionId ?? null,
+      purchase_type: opts?.purchaseType ?? listing.listing_type ?? "fixed",
+    });
+  }
+
   revalidatePath(`/artwork/${artworkId}`);
   revalidatePath("/selling");
   revalidatePath("/browse");
+  revalidatePath("/my-collection");
   return { success: true };
 }
 
@@ -68,6 +103,84 @@ export async function markAuctionNoSale(listingId: number, artworkId: string) {
   revalidatePath(`/artwork/${artworkId}`);
   revalidatePath("/selling");
   return { success: true };
+}
+
+/**
+ * Returns the current user's purchased artworks with artwork details.
+ */
+export async function getPurchases() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, data: [] };
+
+  const { data, error } = await supabase
+    .from("purchases")
+    .select(`
+      id,
+      amount_paid,
+      purchase_type,
+      created_at,
+      artworks (
+        id,
+        title,
+        artist,
+        year,
+        medium,
+        image_url,
+        image_urls
+      )
+    `)
+    .eq("buyer_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getPurchases]", error.message);
+    return { success: false, data: [] };
+  }
+
+  return { success: true, data: data ?? [] };
+}
+
+/**
+ * Returns the sold artworks for the current seller.
+ */
+export async function getSellerSales() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, data: [] };
+
+  const { data, error } = await supabase
+    .from("purchases")
+    .select(`
+      id,
+      amount_paid,
+      purchase_type,
+      created_at,
+      artworks!inner (
+        id,
+        title,
+        artist,
+        image_url,
+        user_id
+      )
+    `)
+    .eq("artworks.user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getSellerSales]", error.message);
+    return { success: false, data: [] };
+  }
+
+  return { success: true, data: data ?? [] };
 }
 
 export async function takeDownListing(artworkId: string) {
