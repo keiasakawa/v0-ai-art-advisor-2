@@ -6,83 +6,23 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Shield, Zap, MessageSquare, Heart, Eye, Send, TrendingUp, Award, Clock } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-
-// Featured artworks data for marketplace section
-const featuredArtworks = [
-  {
-    id: 1,
-    title: "Ethereal Horizons",
-    artist: "Maya Chen",
-    price: 4200,
-    image: "/ethereal-landscape-painting.jpg",
-    category: "Contemporary",
-    size: "36 x 48 in",
-    bids: 8,
-    timeLeft: "2d 14h",
-  },
-  {
-    id: 2,
-    title: "Urban Pulse",
-    artist: "Marcus Rivera",
-    price: 3800,
-    image: "/abstract-urban-painting.png",
-    category: "Abstract",
-    size: "40 x 30 in",
-    bids: 12,
-    timeLeft: "1d 6h",
-  },
-  {
-    id: 3,
-    title: "Digital Dreams",
-    artist: "Yuki Tanaka",
-    price: 2900,
-    image: "/digital-art-colorful.jpg",
-    category: "Digital Art",
-    size: "24 x 24 in",
-    bids: 5,
-    timeLeft: "3d 8h",
-  },
-  {
-    id: 4,
-    title: "Geometric Harmony",
-    artist: "Sofia Laurent",
-    price: 5500,
-    image: "/geometric-abstract.png",
-    category: "Geometric",
-    size: "48 x 36 in",
-    bids: 15,
-    timeLeft: "18h",
-  },
-  {
-    id: 5,
-    title: "Cosmic Flow",
-    artist: "Alex Storm",
-    price: 3200,
-    image: "/space-abstract-art.jpg",
-    category: "Abstract",
-    size: "30 x 40 in",
-    bids: 7,
-    timeLeft: "4d 2h",
-  },
-  {
-    id: 6,
-    title: "Nature's Whisper",
-    artist: "Emma Woods",
-    price: 4800,
-    image: "/contemporary-abstract.jpg",
-    category: "Contemporary",
-    size: "42 x 32 in",
-    bids: 10,
-    timeLeft: "1d 20h",
-  },
-]
+import { getListedArtworks } from "@/app/actions/artwork"
 
 export default function Home() {
-  const [likedArtworks, setLikedArtworks] = useState<number[]>([])
+  const [likedArtworks, setLikedArtworks] = useState<string[]>([])
   const [chatInput, setChatInput] = useState("")
+  const [featuredArtworks, setFeaturedArtworks] = useState<any[]>([])
   const router = useRouter()
+
+  useEffect(() => {
+    getListedArtworks().then((result) => {
+      if (result.success) {
+        setFeaturedArtworks(result.data.slice(0, 6))
+      }
+    })
+  }, [])
 
   const toggleLike = (id: number) => {
     setLikedArtworks((prev) => (prev.includes(id) ? prev.filter((artId) => artId !== id) : [...prev, id]))
@@ -210,80 +150,97 @@ export default function Home() {
           </motion.div>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredArtworks.map((artwork, index) => (
-              <motion.div
-                key={artwork.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="group relative overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50"
-              >
-                {/* Artwork Image */}
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  <img
-                    src={artwork.image || "/placeholder.svg"}
-                    alt={artwork.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {/* Overlay on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
-                  {/* Quick actions */}
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        toggleLike(artwork.id)
-                      }}
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background border border-border"
-                    >
-                      <Heart
-                        className={`h-5 w-5 transition-colors ${
-                          likedArtworks.includes(artwork.id) ? "fill-primary text-primary" : "text-foreground"
-                        }`}
-                      />
-                    </button>
-                    <button className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background border border-border">
-                      <Eye className="h-5 w-5" />
-                    </button>
-                  </div>
-
-                  {/* Category badge */}
-                  <div className="absolute top-4 left-4">
-                    <span className="rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs font-medium border border-border">
-                      {artwork.category}
-                    </span>
-                  </div>
-
-                  {/* Time left badge */}
-                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <div className="flex items-center gap-1 rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs border border-border">
-                      <Clock className="h-3 w-3 text-primary" />
-                      <span>{artwork.timeLeft}</span>
-                    </div>
-                    <div className="rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs border border-border">
-                      {artwork.bids} Bids
-                    </div>
+            {featuredArtworks.length === 0 ? (
+              // Skeleton placeholders while loading
+              Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="rounded-lg border border-border bg-card overflow-hidden animate-pulse"
+                >
+                  <div className="aspect-[4/5] bg-muted" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-5 w-3/4 rounded bg-muted" />
+                    <div className="h-4 w-1/2 rounded bg-muted" />
+                    <div className="h-8 w-full rounded bg-muted mt-3" />
                   </div>
                 </div>
+              ))
+            ) : (
+              featuredArtworks.map((artwork, index) => (
+                <motion.div
+                  key={artwork.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="group relative overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50"
+                >
+                  {/* Artwork Image */}
+                  <div className="relative aspect-[4/5] overflow-hidden">
+                    <img
+                      src={artwork.image_url || "/placeholder.svg"}
+                      alt={artwork.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-                {/* Artwork Info */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg truncate">{artwork.title}</h3>
-                  <p className="text-muted-foreground text-sm">{artwork.artist}</p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Current Bid</p>
-                      <span className="text-xl font-bold text-primary">${artwork.price.toLocaleString()}</span>
+                    {/* Quick actions */}
+                    <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          toggleLike(artwork.id)
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background border border-border"
+                      >
+                        <Heart
+                          className={`h-5 w-5 transition-colors ${
+                            likedArtworks.includes(artwork.id) ? "fill-primary text-primary" : "text-foreground"
+                          }`}
+                        />
+                      </button>
+                      <Link
+                        href={`/artwork/${artwork.id}`}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background border border-border"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </Link>
                     </div>
-                    <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Link href={`/artwork/${artwork.id}`}>View Details</Link>
-                    </Button>
+
+                    {/* Medium badge */}
+                    {artwork.medium && (
+                      <div className="absolute top-4 left-4">
+                        <span className="rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs font-medium border border-border">
+                          {artwork.medium}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
+
+                  {/* Artwork Info */}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg truncate">{artwork.title}</h3>
+                    <p className="text-muted-foreground text-sm">{artwork.artist}</p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div>
+                        {artwork.price && (
+                          <>
+                            <p className="text-xs text-muted-foreground">Price</p>
+                            <span className="text-xl font-bold text-primary">
+                              ${Number(artwork.price).toLocaleString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Link href={`/artwork/${artwork.id}`}>View Details</Link>
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
 
           {/* AI Recommendation CTA */}
