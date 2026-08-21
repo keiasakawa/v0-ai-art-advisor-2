@@ -10,7 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser, SupabaseClient } from "@supabase/supabase-js";
 
-export type UserRole = "collector_buyer" | "collector_seller" | "curator";
+export type UserRole = "collector_buyer" | "collector_seller" | "curator" | "dev";
 
 export interface User {
   id: string;

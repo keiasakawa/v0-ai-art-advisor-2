@@ -40,6 +40,7 @@ import { EstimatedMarketValue } from "@/components/estimated-market-value";
 import { PriceHistory } from "@/components/price-history";
 import { placeBid } from "@/app/actions/bids";
 import { markListingAsSold, markAuctionNoSale } from "@/app/actions/listings";
+import { useAuth } from "@/contexts/auth-context";
 
 interface Artwork {
   id: string;
@@ -142,6 +143,12 @@ export default function ArtworkDetailClient({
   const [bidSuccess, setBidSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isMocking, setIsMocking] = useState(false);
+  const [isForcing, setIsForcing] = useState(false);
+
+  const { user } = useAuth();
+  const isDev = user?.roles.includes("dev") ?? false;
+  const canForceBuy = isDev && (user?.roles.includes("collector_buyer") ?? false);
+  const canForceSell = isDev && (user?.roles.includes("collector_seller") ?? false);
 
   const isAuction = listing?.listing_type === "auction";
   const isSeller = listing?.seller_id === currentUserId;
@@ -194,6 +201,20 @@ export default function ArtworkDetailClient({
         setBidError(result.error ?? "Failed to place bid.");
       }
     });
+  }
+
+  async function handleForceAction() {
+    setIsForcing(true);
+    try {
+      const result = await markListingAsSold(artwork.id, {
+        purchaseType: isAuction ? "auction" : "fixed",
+      });
+      console.log("[v0] force action result:", result);
+      window.location.reload();
+    } catch (err) {
+      console.error("[v0] force action error:", err);
+      setIsForcing(false);
+    }
   }
 
   return (
@@ -494,6 +515,56 @@ export default function ArtworkDetailClient({
               </div>
             </div>
           )}
+
+          {/* Dev-only role-gated force actions */}
+          {listing &&
+            artwork.status !== "sold" &&
+            ((canForceBuy && !isSeller) || (canForceSell && isSeller)) && (
+              <div className="rounded-lg border border-dashed border-violet-400 bg-violet-50 dark:bg-violet-950/20 p-3 space-y-2">
+                <p className="text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wide">
+                  Dev Controls
+                </p>
+                {canForceBuy && !isSeller && (
+                  <div className="space-y-1">
+                    <Button
+                      size="sm"
+                      className="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs"
+                      disabled={isForcing}
+                      onClick={handleForceAction}
+                    >
+                      {isForcing ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        "Force Buy (skip checkout)"
+                      )}
+                    </Button>
+                    <p className="text-[11px] text-violet-600/80 dark:text-violet-400/80">
+                      Instantly marks this artwork as purchased by you, bypassing Stripe.
+                    </p>
+                  </div>
+                )}
+                {canForceSell && isSeller && (
+                  <div className="space-y-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full border-violet-400 text-violet-700 hover:bg-violet-100 dark:text-violet-400 dark:hover:bg-violet-950/40 text-xs"
+                      disabled={isForcing}
+                      onClick={handleForceAction}
+                    >
+                      {isForcing ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        "Force Sell (skip buyer)"
+                      )}
+                    </Button>
+                    <p className="text-[11px] text-violet-600/80 dark:text-violet-400/80">
+                      Instantly marks your listing as sold, simulating a completed sale.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
           {/* Purchase Controls */}
           <div className="space-y-3">
