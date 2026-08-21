@@ -73,6 +73,10 @@ export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout, switchRole, hasRole } = useAuth();
 
+  const visibleNavigation = navigation.filter(
+    (item) => item.name !== "Dashboard" || isAuthenticated,
+  );
+
   const handleLogout = async () => {
     await logout();
     router.push("/");
@@ -101,7 +105,7 @@ export function Navigation() {
 
           {/* Desktop Navigation */}
           <div className="hidden items-center gap-1 md:flex">
-            {navigation.map((item) => {
+            {visibleNavigation.map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/" && pathname.startsWith(item.href));
@@ -350,7 +354,7 @@ export function Navigation() {
                 )}
 
                 <nav className="flex flex-col gap-2">
-                  {navigation.map((item) => {
+                  {visibleNavigation.map((item) => {
                     const isActive =
                       pathname === item.href ||
                       (item.href !== "/" && pathname.startsWith(item.href));
