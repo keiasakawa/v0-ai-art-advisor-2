@@ -28,6 +28,7 @@ import {
   Palette,
   Camera,
   Save,
+  Wrench,
 } from "lucide-react";
 import { useAuth, type UserRole } from "@/contexts/auth-context";
 
@@ -49,6 +50,12 @@ const roleConfig = {
     icon: Palette,
     color: "bg-amber-100 text-amber-700",
     description: "Curate collections and advise collectors",
+  },
+  dev: {
+    label: "Dev",
+    icon: Wrench,
+    color: "bg-violet-100 text-violet-700",
+    description: "Dev-only tools for testing purchase flows",
   },
 };
 
