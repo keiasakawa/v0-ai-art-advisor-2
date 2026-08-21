@@ -136,8 +136,8 @@ export function Navigation() {
               );
             })}
 
-            {isAuthenticated && hasRole("collector_seller") && (
-              <>
+            {isAuthenticated &&
+              (hasRole("collector_buyer") || hasRole("collector_seller")) && (
                 <Button
                   variant={
                     pathname.startsWith("/my-collection")
@@ -157,24 +157,26 @@ export function Navigation() {
                     My Collection
                   </Link>
                 </Button>
-                <Button
-                  variant={
-                    pathname.startsWith("/selling") ? "secondary" : "ghost"
-                  }
-                  asChild
-                  className={cn(
-                    "gap-2 text-sm",
-                    pathname.startsWith("/selling")
-                      ? "bg-secondary font-medium"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Link href="/selling">
-                    <Store className="h-4 w-4" />
-                    Selling
-                  </Link>
-                </Button>
-              </>
+              )}
+
+            {isAuthenticated && hasRole("collector_seller") && (
+              <Button
+                variant={
+                  pathname.startsWith("/selling") ? "secondary" : "ghost"
+                }
+                asChild
+                className={cn(
+                  "gap-2 text-sm",
+                  pathname.startsWith("/selling")
+                    ? "bg-secondary font-medium"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Link href="/selling">
+                  <Store className="h-4 w-4" />
+                  Selling
+                </Link>
+              </Button>
             )}
 
             {isAuthenticated && hasRole("curator") && (
@@ -384,8 +386,9 @@ export function Navigation() {
                     );
                   })}
 
-                  {isAuthenticated && hasRole("collector_seller") && (
-                    <>
+                  {isAuthenticated &&
+                    (hasRole("collector_buyer") ||
+                      hasRole("collector_seller")) && (
                       <Button
                         variant={
                           pathname.startsWith("/my-collection")
@@ -401,22 +404,22 @@ export function Navigation() {
                           My Collection
                         </Link>
                       </Button>
-                      <Button
-                        variant={
-                          pathname.startsWith("/selling")
-                            ? "secondary"
-                            : "ghost"
-                        }
-                        asChild
-                        className="justify-start gap-2"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Link href="/selling">
-                          <Store className="h-4 w-4" />
-                          Selling Dashboard
-                        </Link>
-                      </Button>
-                    </>
+                    )}
+
+                  {isAuthenticated && hasRole("collector_seller") && (
+                    <Button
+                      variant={
+                        pathname.startsWith("/selling") ? "secondary" : "ghost"
+                      }
+                      asChild
+                      className="justify-start gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Link href="/selling">
+                        <Store className="h-4 w-4" />
+                        Selling Dashboard
+                      </Link>
+                    </Button>
                   )}
 
                   {isAuthenticated && hasRole("curator") && (

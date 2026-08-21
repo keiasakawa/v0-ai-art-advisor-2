@@ -94,6 +94,8 @@ export default function MyCollectionPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const canSell = hasRole("collector_seller");
+
   const handleDelete = async () => {
     if (!deleteId) return;
     setIsDeleting(true);
@@ -147,80 +149,129 @@ export default function MyCollectionPage() {
               My Collection
             </h1>
             <p className="text-muted-foreground mt-1">
-              Register and manage artworks you own
+              {canSell
+                ? "Register and manage artworks you own"
+                : "Artworks you've purchased"}
             </p>
           </div>
-          <Button size="lg" asChild>
-            <Link href="/artwork/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Artwork
-            </Link>
-          </Button>
+          {canSell && (
+            <Button size="lg" asChild>
+              <Link href="/artwork/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Artwork
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Total Artworks
-                  </p>
-                  <p className="text-3xl font-bold">{collection.length}</p>
+        {canSell ? (
+          <div className="grid gap-4 md:grid-cols-3 mb-8">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Total Artworks
+                    </p>
+                    <p className="text-3xl font-bold">{collection.length}</p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
+                    <ImageIcon className="h-6 w-6 text-emerald-600" />
+                  </div>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
-                  <ImageIcon className="h-6 w-6 text-emerald-600" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Estimated Value
+                    </p>
+                    <p className="text-3xl font-bold">
+                      ${totalValue.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
+                    <DollarSign className="h-6 w-6 text-blue-600" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Estimated Value
-                  </p>
-                  <p className="text-3xl font-bold">
-                    ${totalValue.toLocaleString()}
-                  </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      With Certificates
+                    </p>
+                    <p className="text-3xl font-bold">
+                      {collection.filter((a) => a.certificate).length}
+                    </p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+                    <Award className="h-6 w-6 text-amber-600" />
+                  </div>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
-                  <DollarSign className="h-6 w-6 text-blue-600" />
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 mb-8">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Artworks Purchased
+                    </p>
+                    <p className="text-3xl font-bold">{purchases.length}</p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
+                    <ShoppingBag className="h-6 w-6 text-emerald-600" />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    With Certificates
-                  </p>
-                  <p className="text-3xl font-bold">
-                    {collection.filter((a) => a.certificate).length}
-                  </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Total Spent
+                    </p>
+                    <p className="text-3xl font-bold">
+                      $
+                      {purchases
+                        .reduce(
+                          (acc, p) => acc + (Number(p.amount_paid) || 0),
+                          0,
+                        )
+                        .toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
+                    <DollarSign className="h-6 w-6 text-blue-600" />
+                  </div>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
-                  <Award className="h-6 w-6 text-amber-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Tabs */}
-        <Tabs defaultValue="artworks">
+        <Tabs defaultValue={canSell ? "artworks" : "purchased"}>
           <TabsList className="mb-6">
-            <TabsTrigger value="artworks" className="gap-2">
-              <Package className="h-4 w-4" />
-              My Artworks
-              {collection.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{collection.length}</Badge>
-              )}
-            </TabsTrigger>
+            {canSell && (
+              <TabsTrigger value="artworks" className="gap-2">
+                <Package className="h-4 w-4" />
+                My Artworks
+                {collection.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">{collection.length}</Badge>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="purchased" className="gap-2">
               <ShoppingBag className="h-4 w-4" />
               Purchased
@@ -230,6 +281,7 @@ export default function MyCollectionPage() {
             </TabsTrigger>
           </TabsList>
 
+          {canSell && (
           <TabsContent value="artworks">
         {/* Collection Grid */}
         {isLoadingArtworks ? (
@@ -374,6 +426,7 @@ export default function MyCollectionPage() {
         )}
 
           </TabsContent>
+          )}
 
           {/* Purchased artworks tab */}
           <TabsContent value="purchased">
