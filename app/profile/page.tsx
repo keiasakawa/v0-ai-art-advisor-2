@@ -29,6 +29,7 @@ import {
   Camera,
   Save,
   Wrench,
+  X,
 } from "lucide-react";
 import { useAuth, type UserRole } from "@/contexts/auth-context";
 
@@ -61,7 +62,8 @@ const roleConfig = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, addRole, switchRole } = useAuth();
+  const { user, isAuthenticated, isLoading, addRole, removeRole, switchRole } =
+    useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -106,6 +108,12 @@ export default function ProfilePage() {
   const handleAddRole = (role: UserRole) => {
     addRole(role);
   };
+
+  const handleRemoveRole = (role: UserRole) => {
+    removeRole(role);
+  };
+
+  const canRemoveRoles = user.roles.length > 1;
 
   const allRoles: UserRole[] = [
     "collector_buyer",
@@ -321,20 +329,33 @@ export default function ProfilePage() {
                                 </p>
                               </div>
                             </div>
-                            {isActive ? (
-                              <Badge variant="default">
-                                <Check className="h-3 w-3 mr-1" />
-                                Active
-                              </Badge>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => switchRole(role)}
-                              >
-                                Switch
-                              </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {isActive ? (
+                                <Badge variant="default">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Active
+                                </Badge>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => switchRole(role)}
+                                >
+                                  Switch
+                                </Button>
+                              )}
+                              {canRemoveRoles && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleRemoveRole(role)}
+                                  aria-label={`Remove ${config.label} role`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           </motion.div>
                         );
                       })}

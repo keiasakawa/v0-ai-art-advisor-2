@@ -40,6 +40,7 @@ interface AuthContextType {
   selectRole: (role: UserRole) => void;
   switchRole: (role: UserRole) => void;
   addRole: (role: UserRole) => void;
+  removeRole: (role: UserRole) => void;
   hasRole: (role: UserRole) => boolean;
   needsRoleSelection: boolean;
   setNeedsRoleSelection: (value: boolean) => void;
@@ -260,6 +261,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const removeRole = async (role: UserRole) => {
+    // Always keep at least one role so the user isn't left in a broken state
+    if (!user || !supabase || user.roles.length <= 1 || !user.roles.includes(role)) return;
+
+    const updatedRoles = user.roles.filter((r) => r !== role);
+    const isRemovingActiveRole = user.activeRole === role;
+    const nextActiveRole = isRemovingActiveRole ? updatedRoles[0] : user.activeRole;
+
+    // Update roles (and active role if needed) in Supabase
+    const { error } = await supabase
+      .from("profiles")
+      .update({ roles: updatedRoles, active_role: nextActiveRole })
+      .eq("id", user.id);
+
+    if (!error) {
+      const updatedUser: User = {
+        ...user,
+        roles: updatedRoles,
+        activeRole: nextActiveRole,
+      };
+      setUser(updatedUser);
+    }
+  };
+
   const hasRole = (role: UserRole) => {
     return user?.roles.includes(role) ?? false;
   };
@@ -277,6 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         selectRole,
         switchRole,
         addRole,
+        removeRole,
         hasRole,
         needsRoleSelection,
         setNeedsRoleSelection,
