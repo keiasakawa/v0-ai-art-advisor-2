@@ -31,6 +31,7 @@ import {
   Search,
   Package,
   User,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, type UserRole } from "@/contexts/auth-context";
@@ -64,6 +65,12 @@ const roleConfig: Record<
     icon: Palette,
     color: "bg-primary/20 text-primary",
     href: "/curator-console",
+  },
+  dev: {
+    label: "Dev",
+    icon: Wrench,
+    color: "bg-violet-500/20 text-violet-400",
+    href: "/dashboard",
   },
 };
 
