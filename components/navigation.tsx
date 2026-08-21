@@ -79,7 +79,7 @@ export function Navigation() {
 
   const handleLogout = async () => {
     await logout();
-    router.push("/");
+    router.push("/login");
     router.refresh();
   };
 
