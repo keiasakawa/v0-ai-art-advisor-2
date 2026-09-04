@@ -173,13 +173,14 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="h-full"
                 >
                   <Link
                     href={`/artwork/${artwork.id}`}
-                    className="group relative block overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50"
+                    className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50"
                   >
                     {/* Artwork Image */}
-                    <div className="relative aspect-[4/5] overflow-hidden">
+                    <div className="relative aspect-[4/5] shrink-0 overflow-hidden">
                       <img
                         src={artwork.image_url || "/placeholder.svg"}
                         alt={artwork.title}
@@ -220,17 +221,19 @@ export default function Home() {
                     </div>
 
                     {/* Artwork Info */}
-                    <div className="p-4">
+                    <div className="flex flex-1 flex-col p-4">
                       <h3 className="font-semibold text-lg truncate">{artwork.title}</h3>
-                      <p className="text-muted-foreground text-sm">{artwork.artist}</p>
-                      {artwork.price && (
-                        <div className="mt-3">
-                          <p className="text-xs text-muted-foreground">Price</p>
-                          <span className="text-xl font-bold text-primary">
-                            ${Number(artwork.price).toLocaleString()}
-                          </span>
-                        </div>
-                      )}
+                      <p className="text-muted-foreground text-sm truncate">{artwork.artist}</p>
+                      <div className="mt-auto pt-3">
+                        {artwork.price && (
+                          <>
+                            <p className="text-xs text-muted-foreground">Price</p>
+                            <span className="text-xl font-bold text-primary">
+                              ${Number(artwork.price).toLocaleString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </Link>
                 </motion.div>

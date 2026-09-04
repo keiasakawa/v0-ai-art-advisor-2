@@ -324,10 +324,11 @@ export default function BrowsePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
+                className="h-full"
               >
-                <Link href={`/artwork/${artwork.id}`} className="block">
-                  <Card className="group overflow-hidden transition-colors hover:border-primary/50">
-                    <div className="relative aspect-[4/5]">
+                <Link href={`/artwork/${artwork.id}`} className="block h-full">
+                  <Card className="group flex h-full flex-col overflow-hidden transition-colors hover:border-primary/50">
+                    <div className="relative aspect-[4/5] shrink-0">
                       <img
                         src={artwork.imageUrl || "/placeholder.svg"}
                         alt={artwork.title}
@@ -359,17 +360,17 @@ export default function BrowsePage() {
                         {artwork.category}
                       </Badge>
                     </div>
-                    <CardContent className="p-4">
+                    <CardContent className="flex flex-1 flex-col p-4">
                       <h3 className="font-semibold line-clamp-1 group-hover:underline">
                         {artwork.title}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground line-clamp-1">
                         {artwork.artist}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
                         {artwork.medium}, {artwork.year}
                       </p>
-                      <p className="text-lg font-bold mt-2">
+                      <p className="text-lg font-bold mt-auto pt-2">
                         ${artwork.price.toLocaleString()}
                       </p>
                     </CardContent>
