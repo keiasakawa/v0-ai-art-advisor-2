@@ -325,55 +325,56 @@ export default function BrowsePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="group overflow-hidden">
-                  <div className="relative aspect-[4/5]">
-                    <img
-                      src={artwork.imageUrl || "/placeholder.svg"}
-                      alt={artwork.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className={`absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity ${
-                        savedArtworks.includes(artwork.id)
-                          ? "opacity-100 bg-red-50 text-red-500"
-                          : ""
-                      }`}
-                      onClick={() => toggleSave(artwork.id)}
-                    >
-                      <Heart
-                        className={`h-4 w-4 ${savedArtworks.includes(artwork.id) ? "fill-current" : ""}`}
+                <Link href={`/artwork/${artwork.id}`} className="block">
+                  <Card className="group overflow-hidden transition-colors hover:border-primary/50">
+                    <div className="relative aspect-[4/5]">
+                      <img
+                        src={artwork.imageUrl || "/placeholder.svg"}
+                        alt={artwork.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
-                    </Button>
-                    <Badge
-                      className="absolute bottom-3 left-3"
-                      variant="secondary"
-                    >
-                      {artwork.category}
-                    </Badge>
-                  </div>
-                  <CardContent className="p-4">
-                    <Link
-                      href={`/artwork/${artwork.id}`}
-                      className="hover:underline"
-                    >
-                      <h3 className="font-semibold line-clamp-1">
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className={`absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+                          savedArtworks.includes(artwork.id)
+                            ? "opacity-100 bg-red-50 text-red-500"
+                            : ""
+                        }`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleSave(artwork.id);
+                        }}
+                      >
+                        <Heart
+                          className={`h-4 w-4 ${savedArtworks.includes(artwork.id) ? "fill-current" : ""}`}
+                        />
+                      </Button>
+                      <Badge
+                        className="absolute bottom-3 left-3"
+                        variant="secondary"
+                      >
+                        {artwork.category}
+                      </Badge>
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold line-clamp-1 group-hover:underline">
                         {artwork.title}
                       </h3>
-                    </Link>
-                    <p className="text-sm text-muted-foreground">
-                      {artwork.artist}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {artwork.medium}, {artwork.year}
-                    </p>
-                    <p className="text-lg font-bold mt-2">
-                      ${artwork.price.toLocaleString()}
-                    </p>
-                  </CardContent>
-                </Card>
+                      <p className="text-sm text-muted-foreground">
+                        {artwork.artist}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {artwork.medium}, {artwork.year}
+                      </p>
+                      <p className="text-lg font-bold mt-2">
+                        ${artwork.price.toLocaleString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </div>
@@ -386,56 +387,60 @@ export default function BrowsePage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="overflow-hidden">
-                  <div className="flex">
-                    <div className="w-48 shrink-0">
-                      <img
-                        src={artwork.imageUrl || "/placeholder.svg"}
-                        alt={artwork.title}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <CardContent className="flex-1 p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <Link
-                            href={`/artwork/${artwork.id}`}
-                            className="hover:underline"
-                          >
-                            <h3 className="font-semibold">{artwork.title}</h3>
-                          </Link>
-                          <p className="text-muted-foreground">
-                            {artwork.artist}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {artwork.medium} · {artwork.size} · {artwork.year}
-                          </p>
-                          <Badge variant="secondary" className="mt-2">
-                            {artwork.category}
-                          </Badge>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold">
-                            ${artwork.price.toLocaleString()}
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-2 bg-transparent"
-                            onClick={() => toggleSave(artwork.id)}
-                          >
-                            <Heart
-                              className={`h-4 w-4 mr-2 ${savedArtworks.includes(artwork.id) ? "fill-current text-red-500" : ""}`}
-                            />
-                            {savedArtworks.includes(artwork.id)
-                              ? "Saved"
-                              : "Save"}
-                          </Button>
-                        </div>
+                <Link href={`/artwork/${artwork.id}`} className="block group">
+                  <Card className="overflow-hidden transition-colors hover:border-primary/50">
+                    <div className="flex">
+                      <div className="w-48 shrink-0">
+                        <img
+                          src={artwork.imageUrl || "/placeholder.svg"}
+                          alt={artwork.title}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                    </CardContent>
-                  </div>
-                </Card>
+                      <CardContent className="flex-1 p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold group-hover:underline">
+                              {artwork.title}
+                            </h3>
+                            <p className="text-muted-foreground">
+                              {artwork.artist}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {artwork.medium} · {artwork.size} ·{" "}
+                              {artwork.year}
+                            </p>
+                            <Badge variant="secondary" className="mt-2">
+                              {artwork.category}
+                            </Badge>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold">
+                              ${artwork.price.toLocaleString()}
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 bg-transparent"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleSave(artwork.id);
+                              }}
+                            >
+                              <Heart
+                                className={`h-4 w-4 mr-2 ${savedArtworks.includes(artwork.id) ? "fill-current text-red-500" : ""}`}
+                              />
+                              {savedArtworks.includes(artwork.id)
+                                ? "Saved"
+                                : "Save"}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </div>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </div>
