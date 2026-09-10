@@ -154,7 +154,7 @@ export default function ArtworkDetailClient({
   const isSeller = listing?.seller_id === currentUserId;
   const displayPrice = isAuction
     ? (highestBid?.amount ?? listing?.auction_starting_bid)
-    : (listing?.price ?? artwork.desired_price);
+    : (listing?.price || artwork.desired_price || artwork.purchase_price);
 
   const minimumBid = highestBid
     ? Number(highestBid.amount) + 1

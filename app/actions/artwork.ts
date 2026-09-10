@@ -150,7 +150,61 @@ export async function getListedArtworks() {
     return { success: false, error: error.message, data: [] }
   }
 
-  return { success: true, data: artworks || [] }
+  if (!artworks || artworks.length === 0) {
+    return { success: true, data: [] }
+  }
+
+  const artworkIds = artworks.map((a) => a.id)
+
+  // Fetch the active listing for each artwork so we know its type/price
+  const { data: listings } = await supabase
+    .from("listings")
+    .select("*")
+    .in("artwork_id", artworkIds)
+    .eq("status", "active")
+
+  const listingByArtworkId = new Map((listings ?? []).map((l) => [l.artwork_id, l]))
+
+  // For auction listings, fetch the current highest bid in a single query
+  const auctionListingIds = (listings ?? [])
+    .filter((l) => l.listing_type === "auction")
+    .map((l) => l.id)
+
+  const highestBidByListingId = new Map<number, number>()
+  if (auctionListingIds.length > 0) {
+    const { data: bids } = await supabase
+      .from("bids")
+      .select("listing_id, amount")
+      .in("listing_id", auctionListingIds)
+      .order("amount", { ascending: false })
+
+    for (const bid of bids ?? []) {
+      if (!highestBidByListingId.has(bid.listing_id)) {
+        highestBidByListingId.set(bid.listing_id, Number(bid.amount))
+      }
+    }
+  }
+
+  const enriched = artworks.map((artwork) => {
+    const listing = listingByArtworkId.get(artwork.id) ?? null
+    const isAuction = listing?.listing_type === "auction"
+    const currentBid = isAuction
+      ? highestBidByListingId.get(listing.id) ?? (Number(listing.auction_starting_bid) || 0)
+      : null
+
+    const fallbackPrice = Number(artwork.desired_price) || Number(artwork.purchase_price) || 0
+    const listingPrice = listing ? Number(listing.price) : 0
+
+    return {
+      ...artwork,
+      listing,
+      isAuction,
+      currentBid,
+      price: listingPrice > 0 ? listingPrice : fallbackPrice,
+    }
+  })
+
+  return { success: true, data: enriched }
 }
 
 export async function uploadArtworkImage(formData: FormData) {
