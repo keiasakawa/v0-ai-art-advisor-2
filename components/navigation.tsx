@@ -31,6 +31,7 @@ import {
   Search,
   Package,
   User,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, type UserRole } from "@/contexts/auth-context";
@@ -65,6 +66,12 @@ const roleConfig: Record<
     color: "bg-primary/20 text-primary",
     href: "/curator-console",
   },
+  dev: {
+    label: "Dev",
+    icon: Wrench,
+    color: "bg-violet-500/20 text-violet-400",
+    href: "/dashboard",
+  },
 };
 
 export function Navigation() {
@@ -73,9 +80,13 @@ export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout, switchRole, hasRole } = useAuth();
 
+  const visibleNavigation = navigation.filter(
+    (item) => item.name !== "Dashboard" || isAuthenticated,
+  );
+
   const handleLogout = async () => {
     await logout();
-    router.push("/");
+    router.push("/login");
     router.refresh();
   };
 
@@ -101,7 +112,7 @@ export function Navigation() {
 
           {/* Desktop Navigation */}
           <div className="hidden items-center gap-1 md:flex">
-            {navigation.map((item) => {
+            {visibleNavigation.map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/" && pathname.startsWith(item.href));
@@ -125,8 +136,8 @@ export function Navigation() {
               );
             })}
 
-            {isAuthenticated && hasRole("collector_seller") && (
-              <>
+            {isAuthenticated &&
+              (hasRole("collector_buyer") || hasRole("collector_seller")) && (
                 <Button
                   variant={
                     pathname.startsWith("/my-collection")
@@ -146,24 +157,26 @@ export function Navigation() {
                     My Collection
                   </Link>
                 </Button>
-                <Button
-                  variant={
-                    pathname.startsWith("/selling") ? "secondary" : "ghost"
-                  }
-                  asChild
-                  className={cn(
-                    "gap-2 text-sm",
-                    pathname.startsWith("/selling")
-                      ? "bg-secondary font-medium"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Link href="/selling">
-                    <Store className="h-4 w-4" />
-                    Selling
-                  </Link>
-                </Button>
-              </>
+              )}
+
+            {isAuthenticated && hasRole("collector_seller") && (
+              <Button
+                variant={
+                  pathname.startsWith("/selling") ? "secondary" : "ghost"
+                }
+                asChild
+                className={cn(
+                  "gap-2 text-sm",
+                  pathname.startsWith("/selling")
+                    ? "bg-secondary font-medium"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Link href="/selling">
+                  <Store className="h-4 w-4" />
+                  Selling
+                </Link>
+              </Button>
             )}
 
             {isAuthenticated && hasRole("curator") && (
@@ -350,7 +363,7 @@ export function Navigation() {
                 )}
 
                 <nav className="flex flex-col gap-2">
-                  {navigation.map((item) => {
+                  {visibleNavigation.map((item) => {
                     const isActive =
                       pathname === item.href ||
                       (item.href !== "/" && pathname.startsWith(item.href));
@@ -373,8 +386,9 @@ export function Navigation() {
                     );
                   })}
 
-                  {isAuthenticated && hasRole("collector_seller") && (
-                    <>
+                  {isAuthenticated &&
+                    (hasRole("collector_buyer") ||
+                      hasRole("collector_seller")) && (
                       <Button
                         variant={
                           pathname.startsWith("/my-collection")
@@ -390,22 +404,22 @@ export function Navigation() {
                           My Collection
                         </Link>
                       </Button>
-                      <Button
-                        variant={
-                          pathname.startsWith("/selling")
-                            ? "secondary"
-                            : "ghost"
-                        }
-                        asChild
-                        className="justify-start gap-2"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Link href="/selling">
-                          <Store className="h-4 w-4" />
-                          Selling Dashboard
-                        </Link>
-                      </Button>
-                    </>
+                    )}
+
+                  {isAuthenticated && hasRole("collector_seller") && (
+                    <Button
+                      variant={
+                        pathname.startsWith("/selling") ? "secondary" : "ghost"
+                      }
+                      asChild
+                      className="justify-start gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Link href="/selling">
+                        <Store className="h-4 w-4" />
+                        Selling Dashboard
+                      </Link>
+                    </Button>
                   )}
 
                   {isAuthenticated && hasRole("curator") && (

@@ -13,63 +13,27 @@ export async function markListingAsSold(
 ) {
   const supabase = await createClient();
 
-  // Fetch the listing so we can record its price and id
-  const { data: listing } = await supabase
-    .from("listings")
-    .select("id, price, auction_starting_bid, listing_type")
-    .eq("artwork_id", artworkId)
-    .in("status", ["active", "ended"])
-    .maybeSingle();
+  // Runs as a SECURITY DEFINER RPC so a buyer (who does not own the listing or
+  // artwork row) can still transition them to "sold" and record the purchase.
+  // Direct table .update() calls here would silently no-op under RLS since
+  // listings/artworks only grant write access to their owner.
+  const { data, error } = await supabase.rpc("mark_listing_sold", {
+    p_artwork_id: artworkId,
+    p_stripe_session_id: opts?.stripeSessionId ?? null,
+    p_amount_paid: opts?.amountPaid ?? null,
+    p_purchase_type: opts?.purchaseType ?? null,
+  });
 
-  const { error: listingError } = await supabase
-    .from("listings")
-    .update({ status: "sold" })
-    .eq("artwork_id", artworkId)
-    .in("status", ["active", "ended"]);
-
-  if (listingError) {
-    console.error("[markListingAsSold listing]", listingError.message);
-    return { success: false, error: listingError.message };
-  }
-
-  const { error: artworkError } = await supabase
-    .from("artworks")
-    .update({ status: "sold", updated_at: new Date().toISOString() })
-    .eq("id", artworkId);
-
-  if (artworkError) {
-    console.error("[markListingAsSold artwork]", artworkError.message);
-    return { success: false, error: artworkError.message };
-  }
-
-  // Record the purchase for the buyer
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user && listing) {
-    const amountPaid =
-      opts?.amountPaid ??
-      (listing.listing_type === "auction"
-        ? listing.auction_starting_bid
-        : listing.price) ??
-      0;
-
-    await supabase.from("purchases").insert({
-      buyer_id: user.id,
-      artwork_id: artworkId,
-      listing_id: listing.id,
-      amount_paid: amountPaid,
-      stripe_session_id: opts?.stripeSessionId ?? null,
-      purchase_type: opts?.purchaseType ?? listing.listing_type ?? "fixed",
-    });
+  if (error) {
+    console.error("[markListingAsSold]", error.message);
+    return { success: false, error: error.message };
   }
 
   revalidatePath(`/artwork/${artworkId}`);
   revalidatePath("/selling");
   revalidatePath("/browse");
   revalidatePath("/my-collection");
-  return { success: true };
+  return { success: true, data };
 }
 
 /**
@@ -79,25 +43,17 @@ export async function markListingAsSold(
 export async function markAuctionNoSale(listingId: number, artworkId: string) {
   const supabase = await createClient();
 
-  const { error: listingError } = await supabase
-    .from("listings")
-    .update({ status: "ended" })
-    .eq("id", listingId)
-    .eq("status", "active");
+  // Runs as a SECURITY DEFINER RPC because this can be triggered by any visitor
+  // who happens to load an expired, bid-less auction — not just the seller —
+  // so a direct .update() would silently no-op under RLS.
+  const { error } = await supabase.rpc("mark_auction_no_sale", {
+    p_listing_id: listingId,
+    p_artwork_id: artworkId,
+  });
 
-  if (listingError) {
-    console.error("[markAuctionNoSale listing]", listingError.message);
-    return { success: false, error: listingError.message };
-  }
-
-  const { error: artworkError } = await supabase
-    .from("artworks")
-    .update({ status: "draft", updated_at: new Date().toISOString() })
-    .eq("id", artworkId);
-
-  if (artworkError) {
-    console.error("[markAuctionNoSale artwork]", artworkError.message);
-    return { success: false, error: artworkError.message };
+  if (error) {
+    console.error("[markAuctionNoSale]", error.message);
+    return { success: false, error: error.message };
   }
 
   revalidatePath(`/artwork/${artworkId}`);
