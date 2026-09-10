@@ -173,58 +173,57 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="h-full"
+                  className="group relative overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50"
                 >
-                  <Link
-                    href={`/artwork/${artwork.id}`}
-                    className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50"
-                  >
-                    {/* Artwork Image */}
-                    <div className="relative aspect-[4/5] shrink-0 overflow-hidden">
-                      <img
-                        src={artwork.image_url || "/placeholder.svg"}
-                        alt={artwork.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      {/* Overlay on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  {/* Artwork Image */}
+                  <div className="relative aspect-[4/5] overflow-hidden">
+                    <img
+                      src={artwork.image_url || "/placeholder.svg"}
+                      alt={artwork.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-                      {/* Quick actions */}
-                      <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            toggleLike(artwork.id)
-                          }}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background border border-border"
-                        >
-                          <Heart
-                            className={`h-5 w-5 transition-colors ${
-                              likedArtworks.includes(artwork.id) ? "fill-primary text-primary" : "text-foreground"
-                            }`}
-                          />
-                        </button>
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm border border-border">
-                          <Eye className="h-5 w-5" />
-                        </span>
-                      </div>
-
-                      {/* Medium badge */}
-                      {artwork.medium && (
-                        <div className="absolute top-4 left-4">
-                          <span className="rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs font-medium border border-border">
-                            {artwork.medium}
-                          </span>
-                        </div>
-                      )}
+                    {/* Quick actions */}
+                    <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          toggleLike(artwork.id)
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background border border-border"
+                      >
+                        <Heart
+                          className={`h-5 w-5 transition-colors ${
+                            likedArtworks.includes(artwork.id) ? "fill-primary text-primary" : "text-foreground"
+                          }`}
+                        />
+                      </button>
+                      <Link
+                        href={`/artwork/${artwork.id}`}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur-sm transition-colors hover:bg-background border border-border"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </Link>
                     </div>
 
-                    {/* Artwork Info */}
-                    <div className="flex flex-1 flex-col p-4">
-                      <h3 className="font-semibold text-lg truncate">{artwork.title}</h3>
-                      <p className="text-muted-foreground text-sm truncate">{artwork.artist}</p>
-                      <div className="mt-auto pt-3">
+                    {/* Medium badge */}
+                    {artwork.medium && (
+                      <div className="absolute top-4 left-4">
+                        <span className="rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs font-medium border border-border">
+                          {artwork.medium}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Artwork Info */}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg truncate">{artwork.title}</h3>
+                    <p className="text-muted-foreground text-sm">{artwork.artist}</p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div>
                         {artwork.price && (
                           <>
                             <p className="text-xs text-muted-foreground">Price</p>
@@ -234,8 +233,11 @@ export default function Home() {
                           </>
                         )}
                       </div>
+                      <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Link href={`/artwork/${artwork.id}`}>View Details</Link>
+                      </Button>
                     </div>
-                  </Link>
+                  </div>
                 </motion.div>
               ))
             )}
