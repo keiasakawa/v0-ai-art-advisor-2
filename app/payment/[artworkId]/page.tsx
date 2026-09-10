@@ -36,12 +36,13 @@ export default async function PaymentPage({ params }: PageProps) {
     redirect(`/artwork/${artworkId}`)
   }
 
-  // Determine price: for won auctions use winning bid; otherwise listing/desired/purchase price
+  // Determine price: for won auctions use winning bid; otherwise listing/desired/purchase price.
+  // Use `||` (not `??`) so a zero/invalid listing price falls through to the next source.
   const rawPrice = isAuction && isAuctionEnded && highestBid
     ? highestBid.amount
-    : listing?.price ??
-      artwork.desired_price ??
-      artwork.purchase_price ??
+    : listing?.price ||
+      artwork.desired_price ||
+      artwork.purchase_price ||
       0
 
   const priceInCents = Math.round(Number(rawPrice) * 100)
