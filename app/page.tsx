@@ -210,12 +210,19 @@ export default function Home() {
                         </span>
                       </div>
 
-                      {/* Medium badge */}
-                      {artwork.medium && (
-                        <div className="absolute top-4 left-4">
-                          <span className="rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs font-medium border border-border">
-                            {artwork.medium}
-                          </span>
+                      {/* Medium / auction badges */}
+                      {(artwork.medium || artwork.isAuction) && (
+                        <div className="absolute top-4 left-4 flex flex-col gap-2">
+                          {artwork.medium && (
+                            <span className="rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-xs font-medium border border-border">
+                              {artwork.medium}
+                            </span>
+                          )}
+                          {artwork.isAuction && (
+                            <span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                              Auction
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -225,15 +232,16 @@ export default function Home() {
                       <h3 className="font-semibold text-lg truncate">{artwork.title}</h3>
                       <p className="text-muted-foreground text-sm truncate">{artwork.artist}</p>
                       <div className="mt-auto pt-3">
-                        {(() => {
-                          const price = Number(artwork.desired_price) || Number(artwork.purchase_price) || 0
-                          return price > 0 ? (
-                            <>
-                              <p className="text-xs text-muted-foreground">Price</p>
-                              <span className="text-xl font-bold text-primary">${price.toLocaleString()}</span>
-                            </>
-                          ) : null
-                        })()}
+                        {artwork.price > 0 && (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              {artwork.isAuction ? "Current Bid" : "Price"}
+                            </p>
+                            <span className="text-xl font-bold text-primary">
+                              ${Number(artwork.isAuction ? artwork.currentBid : artwork.price).toLocaleString()}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </Link>

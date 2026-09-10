@@ -37,6 +37,8 @@ interface BrowseArtwork {
   year: number;
   size: string;
   imageUrl: string;
+  isAuction: boolean;
+  currentBid: number | null;
 }
 
 // Derive a display category from the artwork medium
@@ -77,12 +79,18 @@ function mapArtwork(row: any): BrowseArtwork {
     id: row.id,
     title: row.title || "Untitled",
     artist: row.artist || "Unknown Artist",
-    price: Number(row.desired_price) || Number(row.purchase_price) || 0,
+    price:
+      Number(row.price) ||
+      Number(row.desired_price) ||
+      Number(row.purchase_price) ||
+      0,
     category: deriveCategory(row.medium),
     medium: row.medium || "—",
     year: Number.parseInt(row.year) || 0,
     size: row.dimensions || "—",
     imageUrl: row.image_url || "/placeholder.svg",
+    isAuction: !!row.isAuction,
+    currentBid: row.currentBid ?? null,
   };
 }
 
@@ -353,12 +361,14 @@ export default function BrowsePage() {
                           className={`h-4 w-4 ${savedArtworks.includes(artwork.id) ? "fill-current" : ""}`}
                         />
                       </Button>
-                      <Badge
-                        className="absolute bottom-3 left-3"
-                        variant="secondary"
-                      >
-                        {artwork.category}
-                      </Badge>
+                      <div className="absolute bottom-3 left-3 flex gap-2">
+                        <Badge variant="secondary">{artwork.category}</Badge>
+                        {artwork.isAuction && (
+                          <Badge className="bg-primary text-primary-foreground">
+                            Auction
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <CardContent className="flex flex-1 flex-col p-4">
                       <h3 className="font-semibold line-clamp-1 group-hover:underline">
@@ -370,9 +380,20 @@ export default function BrowsePage() {
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
                         {artwork.medium}, {artwork.year}
                       </p>
-                      <p className="text-lg font-bold mt-auto pt-2">
-                        ${artwork.price.toLocaleString()}
-                      </p>
+                      <div className="mt-auto pt-2">
+                        {artwork.isAuction && (
+                          <p className="text-xs text-muted-foreground">
+                            Current Bid
+                          </p>
+                        )}
+                        <p className="text-lg font-bold">
+                          $
+                          {(artwork.isAuction
+                            ? artwork.currentBid ?? artwork.price
+                            : artwork.price
+                          ).toLocaleString()}
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 </Link>
@@ -411,13 +432,29 @@ export default function BrowsePage() {
                               {artwork.medium} · {artwork.size} ·{" "}
                               {artwork.year}
                             </p>
-                            <Badge variant="secondary" className="mt-2">
-                              {artwork.category}
-                            </Badge>
+                            <div className="mt-2 flex gap-2">
+                              <Badge variant="secondary">
+                                {artwork.category}
+                              </Badge>
+                              {artwork.isAuction && (
+                                <Badge className="bg-primary text-primary-foreground">
+                                  Auction
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="text-right">
+                            {artwork.isAuction && (
+                              <p className="text-xs text-muted-foreground">
+                                Current Bid
+                              </p>
+                            )}
                             <p className="text-xl font-bold">
-                              ${artwork.price.toLocaleString()}
+                              $
+                              {(artwork.isAuction
+                                ? artwork.currentBid ?? artwork.price
+                                : artwork.price
+                              ).toLocaleString()}
                             </p>
                             <Button
                               variant="outline"
