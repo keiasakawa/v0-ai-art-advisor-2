@@ -225,14 +225,15 @@ export default function Home() {
                       <h3 className="font-semibold text-lg truncate">{artwork.title}</h3>
                       <p className="text-muted-foreground text-sm truncate">{artwork.artist}</p>
                       <div className="mt-auto pt-3">
-                        {artwork.price && (
-                          <>
-                            <p className="text-xs text-muted-foreground">Price</p>
-                            <span className="text-xl font-bold text-primary">
-                              ${Number(artwork.price).toLocaleString()}
-                            </span>
-                          </>
-                        )}
+                        {(() => {
+                          const price = Number(artwork.desired_price) || Number(artwork.purchase_price) || 0
+                          return price > 0 ? (
+                            <>
+                              <p className="text-xs text-muted-foreground">Price</p>
+                              <span className="text-xl font-bold text-primary">${price.toLocaleString()}</span>
+                            </>
+                          ) : null
+                        })()}
                       </div>
                     </div>
                   </Link>
