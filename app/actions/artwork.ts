@@ -192,12 +192,15 @@ export async function getListedArtworks() {
       ? highestBidByListingId.get(listing.id) ?? (Number(listing.auction_starting_bid) || 0)
       : null
 
+    const fallbackPrice = Number(artwork.desired_price) || Number(artwork.purchase_price) || 0
+    const listingPrice = listing ? Number(listing.price) : 0
+
     return {
       ...artwork,
       listing,
       isAuction,
       currentBid,
-      price: listing ? Number(listing.price) : Number(artwork.desired_price) || Number(artwork.purchase_price) || 0,
+      price: listingPrice > 0 ? listingPrice : fallbackPrice,
     }
   })
 
