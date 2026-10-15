@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useMemo } from 'react'
 import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
@@ -9,47 +8,23 @@ import {
 import { loadStripe } from '@stripe/stripe-js'
 
 import { startArtworkCheckoutSession } from '@/app/actions/stripe'
-import { markListingAsSold } from '@/app/actions/listings'
 
 interface ArtworkCheckoutProps {
   artworkId: string
-  title: string
-  artist: string
-  priceInCents: number
-  imageUrl?: string
 }
 
-export default function ArtworkCheckout({ 
-  artworkId, 
-  title, 
-  artist, 
-  priceInCents,
-  imageUrl,
-}: ArtworkCheckoutProps) {
-  const router = useRouter()
-  const [isProcessing, setIsProcessing] = useState(false)
-
+export default function ArtworkCheckout({ artworkId }: ArtworkCheckoutProps) {
   const stripePromise = useMemo(() => {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
     return key ? loadStripe(key) : null
   }, [])
 
+  // On completion Stripe redirects to /payment/success, which verifies the
+  // session server-side before marking the artwork as sold.
   const fetchClientSecret = useCallback(
-    () => startArtworkCheckoutSession({ 
-      artworkId, 
-      title, 
-      artist, 
-      priceInCents,
-      imageUrl 
-    }),
-    [artworkId, title, artist, priceInCents, imageUrl]
+    () => startArtworkCheckoutSession(artworkId),
+    [artworkId]
   )
-
-  const handleComplete = useCallback(async () => {
-    setIsProcessing(true)
-    await markListingAsSold(artworkId)
-    router.push('/payment/success')
-  }, [artworkId, router])
 
   if (!stripePromise) {
     return (
@@ -61,19 +36,11 @@ export default function ArtworkCheckout({
     )
   }
 
-  if (isProcessing) {
-    return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-        Processing your order...
-      </div>
-    )
-  }
-
   return (
     <div id="checkout" className="w-full">
       <EmbeddedCheckoutProvider
         stripe={stripePromise}
-        options={{ fetchClientSecret, onComplete: handleComplete }}
+        options={{ fetchClientSecret }}
       >
         <EmbeddedCheckout />
       </EmbeddedCheckoutProvider>
