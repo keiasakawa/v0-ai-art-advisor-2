@@ -30,7 +30,7 @@ interface AuthContextType {
   login: (
     email: string,
     password: string,
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; needsRoleSelection?: boolean }>;
   signup: (
     name: string,
     email: string,
@@ -114,25 +114,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // this is the single source of truth for session state. We do NOT call
     // getSession() separately because it returns cached (possibly stale) data
     // and creates a race condition with the listener.
+    //
+    // The callback must stay synchronous: it runs while the Supabase auth lock
+    // is held, so awaiting another Supabase call here (e.g. the profiles query)
+    // deadlocks until the lock times out — which made login very slow. The
+    // profile fetch is deferred with setTimeout so it runs after the lock is
+    // released.
+    let latestEvent = 0;
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setSupabaseUser(session.user);
-        const profile = await fetchProfile(session.user);
-        setUser(profile);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const eventId = ++latestEvent;
 
-        if (!profile?.roles || profile.roles.length === 0) {
-          setNeedsRoleSelection(true);
-        }
+      if (session?.user) {
+        const sessionUser = session.user;
+        setSupabaseUser(sessionUser);
+
+        setTimeout(async () => {
+          const profile = await fetchProfile(sessionUser);
+          // Ignore results that were superseded by a later auth event
+          if (eventId !== latestEvent) return;
+
+          setUser(profile);
+          if (!profile?.roles || profile.roles.length === 0) {
+            setNeedsRoleSelection(true);
+          }
+          setIsLoading(false);
+        }, 0);
       } else {
         setSupabaseUser(null);
         setUser(null);
         setNeedsRoleSelection(false);
+        setIsLoading(false);
       }
-
-      // Mark loading done after the first event (INITIAL_SESSION or SIGNED_IN)
-      setIsLoading(false);
     });
 
     return () => {
@@ -143,19 +157,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (
     email: string,
     password: string,
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; needsRoleSelection?: boolean }> => {
     if (!supabase) {
       return { success: false, error: "Supabase is not configured" };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    // onAuthStateChange handles all state updates — do nothing here
-    return { success: true };
+    // onAuthStateChange handles all state updates. We only look up roles here
+    // so the caller can redirect to the right page straight away.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("roles")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    return {
+      success: true,
+      needsRoleSelection: !profile?.roles || profile.roles.length === 0,
+    };
   };
 
   const signup = async (

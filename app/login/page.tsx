@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, needsRoleSelection } = useAuth()
+  const { login } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -37,7 +37,7 @@ export default function LoginPage() {
     }
 
     // Keep button in submitting state while navigation completes
-    router.push(needsRoleSelection ? "/select-role" : "/dashboard")
+    router.push(result.needsRoleSelection ? "/select-role" : "/dashboard")
   }
 
   // Demo account buttons - these use real Supabase accounts
@@ -57,7 +57,7 @@ export default function LoginPage() {
     const result = await login(account.email, account.password)
     if (result.success) {
       // Keep button in submitting state while navigation completes
-      router.push(needsRoleSelection ? "/select-role" : "/dashboard")
+      router.push(result.needsRoleSelection ? "/select-role" : "/dashboard")
     } else {
       setError(result.error || "Demo account not set up. Please sign up with your own email or contact support.")
       setIsSubmitting(false)
