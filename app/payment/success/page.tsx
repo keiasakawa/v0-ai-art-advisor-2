@@ -3,22 +3,18 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, Package, Mail, ArrowRight } from "lucide-react";
+import { CheckCircle, Package, Mail, ArrowRight, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { getCheckoutSessionStatus } from "@/app/actions/stripe";
-import { markListingAsSold } from "@/app/actions/listings";
+import { confirmArtworkPurchase } from "@/app/actions/stripe";
+
+type PurchaseResult = Awaited<ReturnType<typeof confirmArtworkPurchase>>;
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
 
-  const [status, setStatus] = useState<{
-    status: string | null;
-    paymentStatus: string;
-    customerEmail: string | null | undefined;
-    artworkId: string | undefined;
-  } | null>(null);
+  const [status, setStatus] = useState<PurchaseResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,16 +22,14 @@ function PaymentSuccessContent() {
       setIsLoading(false);
       return;
     }
-    getCheckoutSessionStatus(sessionId).then(async (result) => {
-      setStatus(result);
-      // Mark the artwork and listing as sold once payment is confirmed
-      if (
-        (result.status === "complete" || result.paymentStatus === "paid") &&
-        result.artworkId
-      ) {
-        await markListingAsSold(result.artworkId);
-      }
-    }).finally(() => setIsLoading(false));
+    // Verifies the payment with Stripe server-side and marks the artwork as sold.
+    confirmArtworkPurchase(sessionId)
+      .then(setStatus)
+      .catch((err) => {
+        console.error("[confirmArtworkPurchase]", err);
+        setStatus(null);
+      })
+      .finally(() => setIsLoading(false));
   }, [sessionId]);
 
   if (isLoading) {
@@ -43,6 +37,34 @@ function PaymentSuccessContent() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">
           Confirming your payment...
+        </div>
+      </div>
+    );
+  }
+
+  if (!status?.success) {
+    const retryHref = status?.artworkId ? `/payment/${status.artworkId}` : "/browse";
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
+              <XCircle className="h-10 w-10 text-destructive" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">
+              Payment not completed
+            </h1>
+            <p className="text-muted-foreground">
+              {status && "error" in status && status.error
+                ? status.error
+                : "We couldn't confirm your payment. You have not been charged unless you received a receipt from Stripe."}
+            </p>
+          </div>
+          <Button asChild size="lg">
+            <Link href={retryHref}>Try Again</Link>
+          </Button>
         </div>
       </div>
     );
@@ -74,7 +96,7 @@ function PaymentSuccessContent() {
                 Confirmation Email
               </p>
               <p className="text-sm text-muted-foreground">
-                {status?.customerEmail
+                {status.customerEmail
                   ? `Sent to ${status.customerEmail}`
                   : "A confirmation email will be sent shortly"}
               </p>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import ArtworkCheckout from "@/components/artwork-checkout"
 import { getArtworkWithListing } from "@/app/actions/artwork"
+import { resolveCheckoutPrice } from "@/lib/checkout-price"
 
 interface PageProps {
   params: Promise<{ artworkId: string }>
@@ -22,30 +23,23 @@ export default async function PaymentPage({ params }: PageProps) {
 
   const {
     artwork,
-    listing,
     highestBid,
-    isAuctionEnded,
     currentUserId,
     currentUserIsWinner,
   } = result.data
 
-  const isAuction = listing?.listing_type === "auction"
-
-  // Block non-winners from purchasing ended auctions
-  if (isAuction && isAuctionEnded && !currentUserIsWinner) {
-    redirect(`/artwork/${artworkId}`)
+  if (!currentUserId) {
+    redirect("/login")
   }
 
-  // Determine price: for won auctions use winning bid; otherwise listing/desired/purchase price.
-  // Use `||` (not `??`) so a zero/invalid listing price falls through to the next source.
-  const rawPrice = isAuction && isAuctionEnded && highestBid
-    ? highestBid.amount
-    : listing?.price ||
-      artwork.desired_price ||
-      artwork.purchase_price ||
-      0
+  // Same price the server uses when creating the Stripe Checkout Session.
+  // Sold artworks, running auctions and non-winners are sent back to the artwork page.
+  const price = resolveCheckoutPrice(result.data)
+  if (!price.ok) {
+    redirect(`/artwork/${artworkId}`)
+  }
+  const rawPrice = price.amount
 
-  const priceInCents = Math.round(Number(rawPrice) * 100)
   const priceFormatted = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -167,13 +161,7 @@ export default async function PaymentPage({ params }: PageProps) {
             {/* Stripe Checkout */}
             <div className="bg-card border border-border rounded-lg p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4">Payment Details</h2>
-              <ArtworkCheckout
-                artworkId={artwork.id}
-                title={artwork.title}
-                artist={artwork.artist}
-                priceInCents={priceInCents}
-                imageUrl={artwork.image_url}
-              />
+              <ArtworkCheckout artworkId={artwork.id} />
             </div>
           </div>
         </div>
