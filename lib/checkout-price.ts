@@ -1,8 +1,19 @@
 interface CheckoutPriceInput {
-  artwork: { status?: string | null; desired_price?: number | null; purchase_price?: number | null }
-  listing: { listing_type?: string | null; status?: string | null; price?: number | null } | null
+  artwork: {
+    status?: string | null
+    user_id?: string | null
+    desired_price?: number | null
+    purchase_price?: number | null
+  }
+  listing: {
+    listing_type?: string | null
+    status?: string | null
+    seller_id?: string | null
+    price?: number | null
+  } | null
   highestBid: { amount: number } | null
   isAuctionEnded: boolean
+  currentUserId: string | null
   currentUserIsWinner: boolean
 }
 
@@ -20,10 +31,15 @@ export function resolveCheckoutPrice({
   listing,
   highestBid,
   isAuctionEnded,
+  currentUserId,
   currentUserIsWinner,
 }: CheckoutPriceInput): CheckoutPrice {
   if (artwork.status === "sold" || listing?.status === "sold") {
     return { ok: false, error: "This artwork has already been sold." }
+  }
+
+  if (currentUserId && (artwork.user_id === currentUserId || listing?.seller_id === currentUserId)) {
+    return { ok: false, error: "You can't buy your own artwork." }
   }
 
   const isAuction = listing?.listing_type === "auction"

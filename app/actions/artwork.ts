@@ -165,6 +165,19 @@ export async function getListedArtworks() {
 
   const listingByArtworkId = new Map((listings ?? []).map((l) => [l.artwork_id, l]))
 
+  // Auctions past their end date stay "active" until someone opens the artwork
+  // page, so hide them here; they are no longer open to new buyers.
+  const now = new Date()
+  const isEndedAuction = (artworkId: string) => {
+    const listing = listingByArtworkId.get(artworkId)
+    return (
+      listing?.listing_type === "auction" &&
+      !!listing.auction_end_date &&
+      new Date(listing.auction_end_date) < now
+    )
+  }
+  const openArtworks = artworks.filter((a) => !isEndedAuction(a.id))
+
   // For auction listings, fetch the current highest bid in a single query
   const auctionListingIds = (listings ?? [])
     .filter((l) => l.listing_type === "auction")
@@ -185,7 +198,7 @@ export async function getListedArtworks() {
     }
   }
 
-  const enriched = artworks.map((artwork) => {
+  const enriched = openArtworks.map((artwork) => {
     const listing = listingByArtworkId.get(artwork.id) ?? null
     const isAuction = listing?.listing_type === "auction"
     const currentBid = isAuction

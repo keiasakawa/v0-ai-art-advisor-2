@@ -44,6 +44,7 @@ import { useAuth } from "@/contexts/auth-context";
 
 interface Artwork {
   id: string;
+  user_id: string | null;
   title: string;
   artist: string;
   year: string | null;
@@ -151,7 +152,9 @@ export default function ArtworkDetailClient({
   const canForceSell = isDev && (user?.roles.includes("collector_seller") ?? false);
 
   const isAuction = listing?.listing_type === "auction";
-  const isSeller = listing?.seller_id === currentUserId;
+  const isSeller =
+    !!currentUserId &&
+    (listing?.seller_id === currentUserId || artwork.user_id === currentUserId);
   const displayPrice = isAuction
     ? (highestBid?.amount ?? listing?.auction_starting_bid)
     : (listing?.price || artwork.desired_price || artwork.purchase_price);
@@ -600,12 +603,16 @@ export default function ArtworkDetailClient({
                   Place a Bid
                 </Button>
               )
+            ) : isSeller ? (
+              <Button size="lg" className="w-full" disabled>
+                This is your artwork
+              </Button>
             ) : (
               <Button size="lg" className="w-full" asChild>
                 <Link href={`/payment/${artwork.id}`}>Buy Now</Link>
               </Button>
             )}
-            {!isAuction && artwork.status !== "sold" && (
+            {!isAuction && !isSeller && artwork.status !== "sold" && (
               <Button
                 size="lg"
                 variant="outline"
