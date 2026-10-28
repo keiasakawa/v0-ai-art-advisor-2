@@ -24,7 +24,6 @@ import {
   ImageIcon,
   Package,
   DollarSign,
-  Eye,
   ArrowRight,
   CheckCircle2,
   Clock,
@@ -324,7 +323,10 @@ export default function MyCollectionPage() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                    <Card
+                      className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => router.push(`/artwork/${artwork.id}`)}
+                    >
                       <div className="flex flex-col sm:flex-row">
                         <div className="sm:w-48 shrink-0">
                           <img
@@ -388,7 +390,10 @@ export default function MyCollectionPage() {
                                   ).toLocaleString()}
                                 </p>
                               )}
-                              <div className="flex gap-2 mt-3 flex-wrap">
+                              <div
+                                className="flex gap-2 mt-3 flex-wrap"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -397,11 +402,6 @@ export default function MyCollectionPage() {
                                 >
                                   <Link href={`/artwork/${artwork.id}/edit`}>
                                     Manage
-                                  </Link>
-                                </Button>
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link href={`/artwork/${artwork.id}`}>
-                                    <Eye className="h-4 w-4" />
                                   </Link>
                                 </Button>
                                 <Button
@@ -467,7 +467,8 @@ export default function MyCollectionPage() {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ delay: index * 0.05 }}
                       >
-                        <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                        <Link href={`/artwork/${artwork.id}`} className="block">
+                        <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
                           <div className="flex flex-col sm:flex-row">
                             <div className="sm:w-48 shrink-0">
                               <img
@@ -508,18 +509,12 @@ export default function MyCollectionPage() {
                                     ${Number(purchase.amount_paid).toLocaleString()}
                                   </p>
                                   <p className="text-xs text-muted-foreground capitalize">{purchase.purchase_type}</p>
-                                  <div className="flex gap-2 mt-3">
-                                    <Button variant="outline" size="sm" asChild>
-                                      <Link href={`/artwork/${artwork.id}`}>
-                                        <Eye className="h-4 w-4" />
-                                      </Link>
-                                    </Button>
-                                  </div>
                                 </div>
                               </div>
                             </CardContent>
                           </div>
                         </Card>
+                        </Link>
                       </motion.div>
                     );
                   })}
