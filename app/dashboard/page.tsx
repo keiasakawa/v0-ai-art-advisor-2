@@ -18,9 +18,9 @@ import {
   DollarSign,
   Loader2,
 } from "lucide-react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useAuth } from "@/contexts/auth-context"
 import { getPortfolio, type PortfolioData, type PortfolioHolding } from "@/app/actions/portfolio"
+import { PortfolioChart } from "@/components/portfolio-chart"
 
 type Signal = "sell" | "hold" | "long-term" | "listed"
 
@@ -31,16 +31,6 @@ interface Holding extends PortfolioHolding {
   gainPercent: number | null
   signal: Signal
 }
-
-const RANGES = {
-  "1M": 1,
-  "3M": 3,
-  "1Y": 12,
-  ALL: null,
-} as const
-type Range = keyof typeof RANGES
-
-const DAY = 24 * 60 * 60 * 1000
 
 function formatMoney(n: number) {
   return `$${Math.round(n).toLocaleString()}`
@@ -76,42 +66,6 @@ function toHolding(h: PortfolioHolding, now: Date): Holding {
   else if (monthsHeld < 6) signal = "long-term"
 
   return { ...h, monthsHeld, holdingPeriod: describePeriod(monthsHeld), gain, gainPercent, signal }
-}
-
-/**
- * Collection value over time, built from when each artwork entered and left
- * the collection, valued at its recorded price.
- */
-function buildHistory(data: PortfolioData, range: Range, now: Date) {
-  const events: { t: number; delta: number }[] = []
-  for (const h of data.holdings) events.push({ t: new Date(h.acquiredAt).getTime(), delta: h.currentValue })
-  for (const s of data.sales) {
-    events.push({ t: new Date(s.acquiredAt).getTime(), delta: s.heldValue })
-    events.push({ t: new Date(s.soldAt).getTime(), delta: -s.heldValue })
-  }
-  events.sort((a, b) => a.t - b.t)
-
-  const end = now.getTime()
-  const months = RANGES[range]
-  let start: number
-  if (months == null) {
-    start = events.length > 0 ? Math.min(events[0].t, end - 30 * DAY) : end - 30 * DAY
-  } else {
-    const d = new Date(now)
-    d.setMonth(d.getMonth() - months)
-    start = d.getTime()
-  }
-
-  let value = 0
-  let i = 0
-  while (i < events.length && events[i].t <= start) value += events[i++].delta
-  const points: { t: number; value: number; event?: boolean }[] = [{ t: start, value }]
-  for (; i < events.length && events[i].t <= end; i++) {
-    value += events[i].delta
-    points.push({ t: events[i].t, value, event: true })
-  }
-  points.push({ t: end, value })
-  return points
 }
 
 function buildInsights(holdings: Holding[], data: PortfolioData) {
@@ -217,7 +171,6 @@ function GainText({ gain, percent }: { gain: number | null; percent: number | nu
 export default function DashboardPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading } = useAuth()
-  const [timeRange, setTimeRange] = useState<Range>("ALL")
   const [data, setData] = useState<PortfolioData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -240,7 +193,6 @@ export default function DashboardPage() {
 
   const now = useMemo(() => new Date(), [data])
   const holdings = useMemo(() => (data ? data.holdings.map((h) => toHolding(h, now)) : []), [data, now])
-  const chartData = useMemo(() => (data ? buildHistory(data, timeRange, now) : []), [data, timeRange, now])
   const insights = useMemo(() => (data ? buildInsights(holdings, data) : []), [holdings, data])
 
   if (error) {
@@ -272,12 +224,7 @@ export default function DashboardPage() {
     .filter((s) => s.costBasis != null && s.costBasis > 0)
     .reduce((sum, s) => sum + (s.amount - (s.costBasis as number)), 0)
 
-  const periodStart = chartData[0]?.value ?? 0
-  const periodChange = totalValue - periodStart
   const sellOpportunities = holdings.filter((h) => h.signal === "sell")
-
-  const rangeTick = (t: number) =>
-    new Date(t).toLocaleDateString("en-US", timeRange === "ALL" ? { month: "short", year: "numeric" } : { month: "short", day: "numeric" })
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-muted/30">
@@ -320,73 +267,7 @@ export default function DashboardPage() {
           {/* Chart */}
           <Card>
             <CardContent className="p-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex gap-1 rounded-lg bg-muted p-1">
-                  {(Object.keys(RANGES) as Range[]).map((range) => (
-                    <button
-                      key={range}
-                      onClick={() => setTimeRange(range)}
-                      className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-                        timeRange === range ? "bg-background shadow-sm" : "hover:bg-background/50"
-                      }`}
-                    >
-                      {range}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  <span className={periodChange >= 0 ? "text-emerald-600" : "text-red-600"}>
-                    {formatSigned(periodChange)}
-                  </span>{" "}
-                  over this period
-                </p>
-              </div>
-
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis
-                    dataKey="t"
-                    type="number"
-                    scale="time"
-                    domain={["dataMin", "dataMax"]}
-                    tickFormatter={rangeTick}
-                    stroke="var(--muted-foreground)"
-                    fontSize={12}
-                  />
-                  <YAxis
-                    stroke="var(--muted-foreground)"
-                    fontSize={12}
-                    tickFormatter={(v: number) => `$${Intl.NumberFormat("en-US", { notation: "compact" }).format(v)}`}
-                  />
-                  <Tooltip
-                    labelFormatter={(t: number) => new Date(t).toLocaleDateString("en-US", { dateStyle: "medium" })}
-                    formatter={(v: number) => [formatMoney(v), "Collection value"]}
-                    contentStyle={{
-                      backgroundColor: "var(--background)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Line
-                    type="stepAfter"
-                    dataKey="value"
-                    stroke="var(--primary)"
-                    strokeWidth={2}
-                    isAnimationActive={false}
-                    dot={(props: any) =>
-                      props.payload?.event ? (
-                        <circle key={props.index} cx={props.cx} cy={props.cy} r={3.5} fill="var(--primary)" />
-                      ) : (
-                        <g key={props.index} />
-                      )
-                    }
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Based on when each artwork was acquired or sold, valued at its asking price or what was paid.
-              </p>
+              <PortfolioChart data={data} now={now} />
             </CardContent>
           </Card>
 
