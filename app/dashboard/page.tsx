@@ -105,10 +105,10 @@ function buildHistory(data: PortfolioData, range: Range, now: Date) {
   let value = 0
   let i = 0
   while (i < events.length && events[i].t <= start) value += events[i++].delta
-  const points = [{ t: start, value }]
+  const points: { t: number; value: number; event?: boolean }[] = [{ t: start, value }]
   for (; i < events.length && events[i].t <= end; i++) {
     value += events[i].delta
-    points.push({ t: events[i].t, value })
+    points.push({ t: events[i].t, value, event: true })
   }
   points.push({ t: end, value })
   return points
@@ -217,7 +217,7 @@ function GainText({ gain, percent }: { gain: number | null; percent: number | nu
 export default function DashboardPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading } = useAuth()
-  const [timeRange, setTimeRange] = useState<Range>("1Y")
+  const [timeRange, setTimeRange] = useState<Range>("ALL")
   const [data, setData] = useState<PortfolioData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -344,31 +344,44 @@ export default function DashboardPage() {
 
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis
                     dataKey="t"
                     type="number"
                     scale="time"
                     domain={["dataMin", "dataMax"]}
                     tickFormatter={rangeTick}
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="var(--muted-foreground)"
                     fontSize={12}
                   />
                   <YAxis
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="var(--muted-foreground)"
                     fontSize={12}
-                    tickFormatter={(v: number) => (v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`)}
+                    tickFormatter={(v: number) => `$${Intl.NumberFormat("en-US", { notation: "compact" }).format(v)}`}
                   />
                   <Tooltip
                     labelFormatter={(t: number) => new Date(t).toLocaleDateString("en-US", { dateStyle: "medium" })}
                     formatter={(v: number) => [formatMoney(v), "Collection value"]}
                     contentStyle={{
-                      backgroundColor: "hsl(var(--background))",
-                      border: "1px solid hsl(var(--border))",
+                      backgroundColor: "var(--background)",
+                      border: "1px solid var(--border)",
                       borderRadius: "8px",
                     }}
                   />
-                  <Line type="stepAfter" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                  <Line
+                    type="stepAfter"
+                    dataKey="value"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                    dot={(props: any) =>
+                      props.payload?.event ? (
+                        <circle key={props.index} cx={props.cx} cy={props.cy} r={3.5} fill="var(--primary)" />
+                      ) : (
+                        <g key={props.index} />
+                      )
+                    }
+                  />
                 </LineChart>
               </ResponsiveContainer>
               <p className="mt-2 text-xs text-muted-foreground">
