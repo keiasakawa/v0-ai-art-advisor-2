@@ -1,6 +1,0 @@
-openai-agents[sqlalchemy]
-asyncpg
-fastapi
-uvicorn[standard]
-python-dotenv
-PyJWT[crypto]
