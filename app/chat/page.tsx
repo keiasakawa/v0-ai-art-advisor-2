@@ -162,16 +162,19 @@ export default function ChatPage() {
     setInput("");
     setIsLoading(true);
 
-    getResponse(userMessage.content).then((response) => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response.message,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      setIsLoading(false);
-    });
+    getResponse(userMessage.content)
+      .then((response) => response.message)
+      .catch(() => "Sorry, I couldn't reach the advisor just now. Please try again in a moment.")
+      .then((content) => {
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        setIsLoading(false);
+      });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

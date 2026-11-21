@@ -1,5 +1,7 @@
 // API utility functions for backend integration
 
+import { createClient } from "@/lib/supabase/client";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export interface ChatRequest {
@@ -8,8 +10,23 @@ export interface ChatRequest {
 }
 
 export interface ChatResponse {
-  response: string;
+  message: string;
   conversationId: string;
+}
+
+/**
+ * Bearer header with the signed-in user's Supabase access token, so the
+ * backend can verify who they are and read their collection. Empty when
+ * signed out or Supabase isn't configured.
+ */
+async function authHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data } = await createClient().auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
 }
 
 export interface Artwork {
@@ -37,6 +54,7 @@ export async function sendChatMessage(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(await authHeaders()),
     },
     body: JSON.stringify({ message, conversationId }),
   });
